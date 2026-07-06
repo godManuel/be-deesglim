@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { User, UserDocument } from './schemas/user.schema';
+import { User, UserDocument, UserRole } from './schemas/user.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
 import { HashingProvider } from 'src/auth/providers/hashing.provider';
@@ -22,13 +22,23 @@ export class UsersService {
     private readonly hashingProvider: HashingProvider,
   ) {}
 
-  public async createUser(createUserDto: CreateUserDto & { authProvider?: any; googleId?: string; }) {
+  public async createUser(
+    createUserDto: CreateUserDto & {
+      authProvider?: any;
+      googleId?: string;
+      role?: UserRole;
+    },
+  ) {
     let existingUser;
 
     try {
-      existingUser = await this.usersModel.findOne({ email: createUserDto.email }).exec();
+      existingUser = await this.usersModel
+        .findOne({ email: createUserDto.email })
+        .exec();
     } catch (error) {
-      throw new RequestTimeoutException('Unable to process your request at the moment. Please try again later.');
+      throw new RequestTimeoutException(
+        'Unable to process your request at the moment. Please try again later.',
+      );
     }
 
     if (existingUser) {
@@ -37,13 +47,17 @@ export class UsersService {
 
     const user = new this.usersModel({
       ...createUserDto,
-      password: createUserDto.password ? await this.hashingProvider.hashPassword(createUserDto.password) : createUserDto.password,
+      password: createUserDto.password
+        ? await this.hashingProvider.hashPassword(createUserDto.password)
+        : createUserDto.password,
     });
 
     try {
       return await user.save();
     } catch (error) {
-      throw new RequestTimeoutException('Unable to process your request at the moment. Please try again later.');
+      throw new RequestTimeoutException(
+        'Unable to process your request at the moment. Please try again later.',
+      );
     }
   }
 
@@ -57,10 +71,15 @@ export class UsersService {
     return user;
   }
 
-  public async updateUser(id: string, update: Partial<UpdateUserDto & { authProvider?: any; googleId?: string }>) {
+  public async updateUser(
+    id: string,
+    update: Partial<UpdateUserDto & { authProvider?: any; googleId?: string }>,
+  ) {
     const user = await this.findById(id);
     if (update.password) {
-      update.password = await this.hashingProvider.hashPassword(update.password as string);
+      update.password = await this.hashingProvider.hashPassword(
+        update.password as string,
+      );
     }
     Object.assign(user, update);
     return user.save();

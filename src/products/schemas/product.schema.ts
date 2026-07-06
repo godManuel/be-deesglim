@@ -26,6 +26,9 @@ export class Product {
   @Prop({ default: false })
   isFeatured: boolean;
 
+  @Prop({ type: Number, default: 0 })
+  price: number;
+
   @Prop({ type: Types.ObjectId, ref: Category.name })
   category: Types.ObjectId;
 

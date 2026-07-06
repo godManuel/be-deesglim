@@ -1,50 +1,77 @@
-import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { Body, Controller, Post } from '@nestjs/common';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { GoogleAuthDto } from './dto/google-auth.dto';
+import { CreateUserDto } from '../users/dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { GoogleAuthDto } from './dto/google-auth.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('login')
-  @HttpCode(200)
-  @ApiOperation({ summary: 'User login', description: 'Authenticate user with email and password' })
-  @ApiBody({ type: LoginDto })
-  @ApiResponse({ status: 200, description: 'User logged in successfully' })
-  @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
-  }
-
   @Post('register')
-  @ApiOperation({ summary: 'User registration', description: 'Register a new user account' })
+  @ApiOperation({
+    summary: 'Register a new user',
+    description: 'Creates a new local user account with email and password.',
+  })
   @ApiBody({ type: RegisterDto })
   @ApiResponse({ status: 201, description: 'User registered successfully' })
   register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
 
+  @Post('login')
+  @ApiOperation({
+    summary: 'Authenticate a user',
+    description: 'Logs in a user using email and password.',
+  })
+  @ApiBody({ type: LoginDto })
+  @ApiResponse({ status: 200, description: 'User authenticated successfully' })
+  login(@Body() loginDto: LoginDto) {
+    return this.authService.login(loginDto);
+  }
+
   @Post('google')
-  @HttpCode(200)
-  @UseGuards(GoogleAuthGuard)
-  @ApiOperation({ summary: 'Google authentication', description: 'Register or sign in a user with a Google ID token' })
+  @ApiOperation({
+    summary: 'Authenticate using Google',
+    description: 'Logs in or registers a user via Google OAuth token.',
+  })
   @ApiBody({ type: GoogleAuthDto })
   @ApiResponse({ status: 200, description: 'Google authentication successful' })
-  @ApiResponse({ status: 401, description: 'Invalid Google credentials' })
-  google(@Body() googleAuthDto: GoogleAuthDto) {
+  googleAuth(@Body() googleAuthDto: GoogleAuthDto) {
     return this.authService.googleAuth(googleAuthDto);
   }
 
   @Post('refresh')
-  @ApiOperation({ summary: 'Refresh access token' })
-  @ApiBody({ type: RefreshTokenDto })
-  refresh(@Body() body: RefreshTokenDto) {
-    return this.authService.refresh(body.refreshToken);
+  @ApiOperation({
+    summary: 'Refresh access token',
+    description: 'Returns a fresh access token for a valid refresh token.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        refreshToken: { type: 'string' },
+      },
+      required: ['refreshToken'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Token refreshed successfully' })
+  refresh(@Body('refreshToken') refreshToken: string) {
+    return this.authService.refresh(refreshToken);
+  }
+
+  @Post('admin/register')
+  @ApiOperation({
+    summary: 'Register a new admin user',
+    description:
+      'Creates a new admin account without requiring an existing admin token.',
+  })
+  @ApiBody({ type: CreateUserDto })
+  @ApiResponse({ status: 201, description: 'Admin user created successfully' })
+  createAdmin(@Body() createUserDto: CreateUserDto) {
+    return this.authService.registerAdmin(createUserDto);
   }
 }

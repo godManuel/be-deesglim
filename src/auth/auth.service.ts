@@ -1,11 +1,16 @@
-import { Injectable, UnauthorizedException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from 'src/users/users.service';
 import { HashingProvider } from './providers/hashing.provider';
-import { AuthProvider } from 'src/users/schemas/user.schema';
+import { AuthProvider, UserRole } from 'src/users/schemas/user.schema';
 import { verifyGoogleIdToken } from './strategies/google.strategy';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { CreateUserDto } from 'src/users/dto/create-user.dto';
 
 @Injectable()
 export class AuthService {
@@ -31,12 +36,30 @@ export class AuthService {
     };
   }
 
+  async registerAdmin(createUserDto: CreateUserDto) {
+    const user = await this.usersService.createUser({
+      ...createUserDto,
+      role: UserRole.ADMIN,
+    } as any);
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      emailVerified: user.emailVerified,
+      authProvider: user.authProvider,
+    };
+  }
+
   async login(loginDto: LoginDto) {
     const user = await this.usersService.findByEmail(loginDto.email);
     if (!user || !user.password) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    const matches = await this.hashingProvider.comparePassword(loginDto.password, user.password);
+    const matches = await this.hashingProvider.comparePassword(
+      loginDto.password,
+      user.password,
+    );
     if (!matches) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -70,7 +93,9 @@ export class AuthService {
 
   async refresh(refreshToken: string) {
     try {
-      const payload: any = this.jwtService.verify(refreshToken, { secret: process.env.JWT_SECRET ?? 'change-me' });
+      const payload: any = this.jwtService.verify(refreshToken, {
+        secret: process.env.JWT_SECRET ?? 'change-me',
+      });
       const user = await this.usersService.findById(payload.sub);
       return this.buildAuthResponse(user);
     } catch (err) {
