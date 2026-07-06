@@ -1,17 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty } from 'class-validator';
+import { CategoryName } from '../schemas/category.schema';
 
 export class CreateCategoryDto {
-  @ApiProperty({ example: 'Electronics', description: 'Category name' })
-  @IsNotEmpty()
-  @IsString()
-  name: string;
-
   @ApiProperty({
-    example: 'electronics',
-    description: 'Category slug identifier',
+    example: CategoryName.CUSTOM_WIGS,
+    description: 'Category name chosen from predefined category types',
+    enum: CategoryName,
   })
   @IsNotEmpty()
-  @IsString()
-  slug: string;
+  @IsEnum(CategoryName)
+  name: CategoryName;
 }

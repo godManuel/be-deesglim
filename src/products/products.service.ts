@@ -3,8 +3,14 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Category, CategoryDocument } from './schemas/category.schema';
 import { Product, ProductDocument } from './schemas/product.schema';
-import { ProductVariant, ProductVariantDocument } from './schemas/product-variant.schema';
-import { ProductImage, ProductImageDocument } from './schemas/product-image.schema';
+import {
+  ProductVariant,
+  ProductVariantDocument,
+} from './schemas/product-variant.schema';
+import {
+  ProductImage,
+  ProductImageDocument,
+} from './schemas/product-image.schema';
 import { CreateProductDto } from './dto/create-product.dto';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
 import { CreateProductImageDto } from './dto/create-product-image.dto';
@@ -69,16 +75,23 @@ export class ProductsService {
     return product.save();
   }
 
-  async createCategory(createCategoryDto: CreateCategoryDto): Promise<Category> {
+  async createCategory(
+    createCategoryDto: CreateCategoryDto,
+  ): Promise<Category> {
+    const slug = createCategoryDto.name
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+
     const existingCategory = await this.categoryModel.findOne({
-      $or: [{ name: createCategoryDto.name }, { slug: createCategoryDto.slug }],
+      $or: [{ name: createCategoryDto.name }, { slug }],
     });
 
     if (existingCategory) {
       throw new BadRequestException('Category name or slug already exists.');
     }
 
-    const category = new this.categoryModel(createCategoryDto);
+    const category = new this.categoryModel({ ...createCategoryDto, slug });
     return category.save();
   }
 

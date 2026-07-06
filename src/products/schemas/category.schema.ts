@@ -3,10 +3,16 @@ import { Document } from 'mongoose';
 
 export type CategoryDocument = Category & Document;
 
+export enum CategoryName {
+  CUSTOM_WIGS = 'Custom Wigs',
+  LACE_SUPPLY = 'Lace Supply',
+  CLOSURES_FRONTALS = 'Closures/Frontals',
+}
+
 @Schema({ timestamps: true })
 export class Category {
-  @Prop({ required: true, unique: true })
-  name: string;
+  @Prop({ required: true, unique: true, enum: CategoryName })
+  name: CategoryName;
 
   @Prop({ required: true, unique: true })
   slug: string;
