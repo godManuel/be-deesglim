@@ -283,6 +283,7 @@ export class ProductsService {
       .populate('variants')
       .populate('images')
       .populate('category')
+      .populate('images')
       .exec();
   }
 
