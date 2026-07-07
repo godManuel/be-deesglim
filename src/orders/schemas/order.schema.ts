@@ -40,6 +40,9 @@ export class Order {
   @Prop({ required: true, unique: true })
   orderNumber: string;
 
+  @Prop({ unique: true, sparse: true })
+  paymentReference?: string;
+
   @Prop({ type: String, enum: OrderStatus, default: OrderStatus.PENDING })
   status: OrderStatus;
 

@@ -4,6 +4,7 @@ import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
 import { Category, CategorySchema } from './schemas/category.schema';
 import { Product, ProductSchema } from './schemas/product.schema';
+import { Order, OrderSchema } from '../orders/schemas/order.schema';
 import {
   ProductImage,
   ProductImageSchema,
@@ -19,6 +20,7 @@ import {
       { name: Product.name, schema: ProductSchema },
       { name: ProductVariant.name, schema: ProductVariantSchema },
       { name: ProductImage.name, schema: ProductImageSchema },
+      { name: Order.name, schema: OrderSchema },
       { name: Category.name, schema: CategorySchema },
     ]),
   ],

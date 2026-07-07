@@ -1,8 +1,23 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
+import { TopCategoriesQueryDto } from './dto/top-categories-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -26,6 +41,36 @@ export class ProductsController {
     return this.productsService.findAll();
   }
 
+  @Get('categories')
+  @ApiOperation({
+    summary: 'List all categories',
+    description: 'Retrieve all product categories',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Categories retrieved successfully',
+  })
+  listCategories() {
+    return this.productsService.findCategories();
+  }
+
+  @Get('dashboard/top-categories')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Get top categories breakdown',
+    description:
+      'Returns category revenue share for the three configured product categories within the selected period.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Top categories retrieved successfully',
+  })
+  getTopCategories(@Query() query: TopCategoriesQueryDto) {
+    return this.productsService.getTopCategories(query);
+  }
+
   @Get(':slug')
   @ApiOperation({
     summary: 'Get product by slug',
@@ -38,19 +83,6 @@ export class ProductsController {
   @ApiResponse({ status: 404, description: 'Product not found' })
   findOne(@Param('slug') slug: string) {
     return this.productsService.findBySlug(slug);
-  }
-
-  @Get('categories')
-  @ApiOperation({
-    summary: 'List all categories',
-    description: 'Retrieve all product categories',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Categories retrieved successfully',
-  })
-  listCategories() {
-    return this.productsService.findCategories();
   }
 
   @Post()

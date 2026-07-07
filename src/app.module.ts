@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { CartModule } from './cart/cart.module';
 import { ContentModule } from './content/content.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { DatabaseModule } from './database/database.module';
 import { OrdersModule } from './orders/orders.module';
 import { ProductsModule } from './products/products.module';
@@ -20,6 +21,7 @@ import { UsersModule } from './users/users.module';
     CartModule,
     OrdersModule,
     ContentModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

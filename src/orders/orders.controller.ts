@@ -11,22 +11,85 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
-import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { ListOrdersQueryDto } from './dto/list-orders-query.dto';
+import { InitializeCheckoutDto } from './dto/initialize-checkout.dto';
+import { VerifyPaymentDto } from './dto/verify-payment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../users/schemas/user.schema';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
+@ApiTags('Orders')
+@UseGuards(JwtAuthGuard)
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
-  @Post()
-  create(@Req() request: any, @Body() createOrderDto: CreateOrderDto) {
-    return this.ordersService.create(request.user.id, createOrderDto);
+  @Post('checkout/initialize')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Initialize checkout payment',
+    description:
+      'Initializes a Paystack transaction for the authenticated user based on the active cart.',
+  })
+  @ApiBody({ type: InitializeCheckoutDto })
+  @ApiResponse({
+    status: 201,
+    description:
+      'Checkout initialized successfully and authorization URL returned.',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Invalid cart/checkout payload or Paystack initialization failed.',
+  })
+  initializeCheckout(
+    @Req() request: any,
+    @Body() initializeCheckoutDto: InitializeCheckoutDto,
+  ) {
+    return this.ordersService.initializeCheckout(
+      request.user.id,
+      request.user.email,
+      initializeCheckoutDto,
+    );
+  }
+
+  @Post('checkout/verify')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Verify checkout payment',
+    description:
+      'Verifies a Paystack transaction reference and creates an order when payment is successful.',
+  })
+  @ApiBody({ type: VerifyPaymentDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Payment verified successfully and order created.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Payment verification failed or payment not successful.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Checkout transaction reference not found for the user.',
+  })
+  verifyCheckout(
+    @Req() request: any,
+    @Body() verifyPaymentDto: VerifyPaymentDto,
+  ) {
+    return this.ordersService.verifyCheckout(
+      request.user.id,
+      verifyPaymentDto.reference,
+    );
   }
 
   @Get()
@@ -37,28 +100,12 @@ export class OrdersController {
     return this.ordersService.findAdminOrders(query);
   }
 
-  @Get('delivered')
+  @Get('dashboard/stats')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  findDelivered(@Query() query: ListOrdersQueryDto) {
-    return this.ordersService.findDeliveredOrders(query);
-  }
-
-  @Get('shipped')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
-  findShipped(@Query() query: ListOrdersQueryDto) {
-    return this.ordersService.findShippedOrders(query);
-  }
-
-  @Get('pending')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
-  findPending(@Query() query: ListOrdersQueryDto) {
-    return this.ordersService.findPendingOrders(query);
+  dashboardStats() {
+    return this.ordersService.getDashboardStats();
   }
 
   @Get('user/:userId')

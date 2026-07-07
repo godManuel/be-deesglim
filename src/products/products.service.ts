@@ -23,6 +23,12 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
 import { CreateProductImageDto } from './dto/create-product-image.dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
+import {
+  Order,
+  OrderDocument,
+  OrderStatus,
+} from '../orders/schemas/order.schema';
+import { TopCategoriesQueryDto } from './dto/top-categories-query.dto';
 
 @Injectable()
 export class ProductsService {
@@ -35,6 +41,8 @@ export class ProductsService {
     private readonly imageModel: Model<ProductImageDocument>,
     @InjectModel(Category.name)
     private readonly categoryModel: Model<CategoryDocument>,
+    @InjectModel(Order.name)
+    private readonly orderModel: Model<OrderDocument>,
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
@@ -176,5 +184,124 @@ export class ProductsService {
 
   async findCategories(): Promise<Category[]> {
     return this.categoryModel.find().exec();
+  }
+
+  async getTopCategories(query: TopCategoriesQueryDto) {
+    const days = query.days ?? 30;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const revenueStatuses = [
+      OrderStatus.PAID,
+      OrderStatus.PROCESSING,
+      OrderStatus.SHIPPED,
+      OrderStatus.DELIVERED,
+    ];
+
+    const results = await this.orderModel.aggregate([
+      {
+        $match: {
+          status: { $in: revenueStatuses },
+          createdAt: { $gte: startDate },
+        },
+      },
+      { $unwind: '$items' },
+      {
+        $addFields: {
+          variantObjectId: { $toObjectId: '$items.productVariantId' },
+        },
+      },
+      {
+        $lookup: {
+          from: 'products',
+          let: { variantId: '$variantObjectId' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $in: ['$$variantId', '$variants'] },
+              },
+            },
+            {
+              $lookup: {
+                from: 'categories',
+                localField: 'category',
+                foreignField: '_id',
+                as: 'categoryDoc',
+              },
+            },
+            {
+              $unwind: {
+                path: '$categoryDoc',
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                categoryName: '$categoryDoc.name',
+              },
+            },
+          ],
+          as: 'productMatch',
+        },
+      },
+      {
+        $addFields: {
+          categoryName: {
+            $ifNull: [
+              { $arrayElemAt: ['$productMatch.categoryName', 0] },
+              'Uncategorized',
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$categoryName',
+          revenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } },
+          quantitySold: { $sum: '$items.quantity' },
+          orderCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const categoryOrder = [
+      CategoryName.CUSTOM_WIGS,
+      CategoryName.LACE_SUPPLY,
+      CategoryName.CLOSURES_FRONTALS,
+    ];
+
+    const totalRevenue = results.reduce(
+      (sum, item) => sum + Number(item.revenue ?? 0),
+      0,
+    );
+
+    const categoryMap = new Map(results.map((item) => [item._id, item]));
+
+    const categories = categoryOrder.map((categoryName) => {
+      const item = categoryMap.get(categoryName);
+      const revenue = Number(item?.revenue ?? 0);
+      return {
+        category: categoryName,
+        revenue: Number(revenue.toFixed(2)),
+        quantitySold: Number(item?.quantitySold ?? 0),
+        orderCount: Number(item?.orderCount ?? 0),
+        percentage:
+          totalRevenue > 0
+            ? Number(((revenue / totalRevenue) * 100).toFixed(2))
+            : 0,
+      };
+    });
+
+    const topCategory =
+      [...categories].sort((left, right) => right.revenue - left.revenue)[0] ??
+      null;
+
+    return {
+      periodDays: days,
+      totalRevenue: Number(totalRevenue.toFixed(2)),
+      topCategory,
+      categories,
+    };
   }
 }
