@@ -1,8 +1,16 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Category, CategoryDocument } from './schemas/category.schema';
-import { Product, ProductDocument } from './schemas/product.schema';
+import {
+  Category,
+  CategoryDocument,
+  CategoryName,
+} from './schemas/category.schema';
+import {
+  CustomWigType,
+  Product,
+  ProductDocument,
+} from './schemas/product.schema';
 import {
   ProductVariant,
   ProductVariantDocument,
@@ -43,6 +51,51 @@ export class ProductsService {
       );
     }
 
+    const isCustomWigCategory =
+      category.slug === 'custom-wigs' ||
+      category.name === CategoryName.CUSTOM_WIGS;
+    const isClosuresFrontalsCategory =
+      category.slug === 'closuresfrontals' ||
+      category.name === CategoryName.CLOSURES_FRONTALS;
+    const isLaceSupplyCategory =
+      category.slug === 'lace-supply' ||
+      category.name === CategoryName.LACE_SUPPLY;
+
+    if (isCustomWigCategory) {
+      if (
+        !createProductDto.laceSize ||
+        createProductDto.headSize === undefined ||
+        !createProductDto.color ||
+        createProductDto.grams === undefined ||
+        !createProductDto.length
+      ) {
+        throw new BadRequestException(
+          'Custom Wig products require laceSize, headSize, color, grams, and length.',
+        );
+      }
+    }
+
+    if (isClosuresFrontalsCategory) {
+      if (
+        !createProductDto.laceSize ||
+        !createProductDto.length ||
+        !createProductDto.color ||
+        createProductDto.quantity === undefined ||
+        createProductDto.oldPrice === undefined ||
+        createProductDto.newPrice === undefined
+      ) {
+        throw new BadRequestException(
+          'Closures/Frontals products require laceSize, length, color, quantity, oldPrice, and newPrice.',
+        );
+      }
+    }
+
+    if (!isLaceSupplyCategory && createProductDto.variants?.length) {
+      throw new BadRequestException(
+        'Variants can only be added to products in Lace Supply category.',
+      );
+    }
+
     const variantIds: Types.ObjectId[] = [];
     if (createProductDto.variants?.length) {
       const variants = await this.variantModel.insertMany(
@@ -67,6 +120,14 @@ export class ProductsService {
 
     const product = new this.productModel({
       ...createProductDto,
+      allowAnyColor:
+        createProductDto.customWigType === CustomWigType.MAKE_FROM_SCRATCH
+          ? true
+          : (createProductDto.allowAnyColor ?? false),
+      price:
+        isClosuresFrontalsCategory && createProductDto.newPrice !== undefined
+          ? createProductDto.newPrice
+          : createProductDto.price,
       category: category._id,
       variants: variantIds,
       images: imageIds,

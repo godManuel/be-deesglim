@@ -3,6 +3,15 @@ import { Document, Types } from 'mongoose';
 
 export type OrderDocument = Order & Document;
 
+export enum OrderStatus {
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+  PROCESSING = 'PROCESSING',
+  SHIPPED = 'SHIPPED',
+  DELIVERED = 'DELIVERED',
+  CANCELLED = 'CANCELLED',
+}
+
 @Schema()
 export class OrderItem {
   @Prop({ required: true })
@@ -31,8 +40,8 @@ export class Order {
   @Prop({ required: true, unique: true })
   orderNumber: string;
 
-  @Prop({ default: 'PENDING' })
-  status: 'PENDING' | 'PAID' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  @Prop({ type: String, enum: OrderStatus, default: OrderStatus.PENDING })
+  status: OrderStatus;
 
   @Prop({ type: Object, required: true })
   shippingAddress: Record<string, any>;

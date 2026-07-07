@@ -93,9 +93,7 @@ export class AuthService {
 
   async refresh(refreshToken: string) {
     try {
-      const payload: any = this.jwtService.verify(refreshToken, {
-        secret: process.env.JWT_SECRET ?? 'change-me',
-      });
+      const payload: any = this.jwtService.verify(refreshToken);
       const user = await this.usersService.findById(payload.sub);
       return this.buildAuthResponse(user);
     } catch (err) {
