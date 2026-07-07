@@ -22,6 +22,7 @@ import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { TopCategoriesQueryDto } from './dto/top-categories-query.dto';
+import { ListProductsQueryDto } from './dto/list-products-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -50,8 +51,8 @@ export class ProductsController {
     status: 200,
     description: 'Products retrieved successfully',
   })
-  findAll() {
-    return this.productsService.findAll();
+  findAll(@Query() query: ListProductsQueryDto) {
+    return this.productsService.findAll(query);
   }
 
   @Get('categories')

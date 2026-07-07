@@ -9,6 +9,19 @@ export enum PaymentTransactionStatus {
   FAILED = 'FAILED',
 }
 
+export enum PaymentMethod {
+  CARD = 'CARD',
+  BANK = 'BANK',
+  USSD = 'USSD',
+  QR = 'QR',
+  MOBILE_MONEY = 'MOBILE_MONEY',
+  BANK_TRANSFER = 'BANK_TRANSFER',
+  EFT = 'EFT',
+  PAYATTITUDE = 'PAYATTITUDE',
+  APPLE_PAY = 'APPLE_PAY',
+  UNKNOWN = 'UNKNOWN',
+}
+
 @Schema({ _id: false })
 export class CheckoutItemSnapshot {
   @Prop({ required: true })
@@ -77,6 +90,16 @@ export class PaymentTransaction {
 
   @Prop()
   paystackStatus?: string;
+
+  @Prop()
+  paystackChannel?: string;
+
+  @Prop({
+    type: String,
+    enum: PaymentMethod,
+    default: PaymentMethod.UNKNOWN,
+  })
+  methodOfPayment?: PaymentMethod;
 
   @Prop({ type: Date })
   paidAt?: Date;

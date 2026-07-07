@@ -31,6 +31,7 @@ import {
   OrderStatus,
 } from '../orders/schemas/order.schema';
 import { TopCategoriesQueryDto } from './dto/top-categories-query.dto';
+import { ListProductsQueryDto } from './dto/list-products-query.dto';
 
 type UploadedProductImageFile = {
   buffer: Buffer;
@@ -277,13 +278,23 @@ export class ProductsService {
     return category.save();
   }
 
-  findAll(): Promise<Product[]> {
+  async findAll(query?: ListProductsQueryDto): Promise<Product[]> {
+    const filter: Record<string, any> = { isVisible: true };
+
+    if (query?.category?.trim()) {
+      const category = await this.findCategoryByFilterInput(query.category);
+      if (!category) {
+        return [];
+      }
+
+      filter.category = category._id;
+    }
+
     return this.productModel
-      .find({ isVisible: true })
+      .find(filter)
       .populate('variants')
       .populate('images')
       .populate('category')
-      .populate('images')
       .exec();
   }
 
@@ -298,6 +309,36 @@ export class ProductsService {
 
   async findCategories(): Promise<Category[]> {
     return this.categoryModel.find().exec();
+  }
+
+  private async findCategoryByFilterInput(input: string) {
+    const normalized = input.trim().toLowerCase();
+    const normalizedSlug = normalized
+      .replace(/\//g, '-')
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/-+/g, '-');
+
+    const aliasMap: Record<string, CategoryName> = {
+      'custom-wigs': CategoryName.CUSTOM_WIGS,
+      customwigs: CategoryName.CUSTOM_WIGS,
+      'lace-supply': CategoryName.LACE_SUPPLY,
+      lacesupply: CategoryName.LACE_SUPPLY,
+      'closures-frontals': CategoryName.CLOSURES_FRONTALS,
+      closuresfrontals: CategoryName.CLOSURES_FRONTALS,
+    };
+
+    const categoryName = aliasMap[normalizedSlug] as CategoryName | undefined;
+
+    return this.categoryModel
+      .findOne({
+        $or: [
+          { slug: normalizedSlug },
+          { name: categoryName ?? input.trim() },
+          { name: input.trim() },
+        ],
+      })
+      .exec();
   }
 
   async getTopCategories(query: TopCategoriesQueryDto) {

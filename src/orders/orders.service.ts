@@ -12,6 +12,7 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { ListOrdersQueryDto } from './dto/list-orders-query.dto';
 import { InitializeCheckoutDto } from './dto/initialize-checkout.dto';
 import {
+  PaymentMethod,
   PaymentTransaction,
   PaymentTransactionDocument,
   PaymentTransactionStatus,
@@ -87,6 +88,7 @@ export class OrdersService {
       userId: new Types.ObjectId(userId),
       reference,
       status: PaymentTransactionStatus.INITIATED,
+      methodOfPayment: PaymentMethod.UNKNOWN,
       amountKobo: checkoutData.amountKobo,
       subtotal: checkoutData.subtotal,
       taxTotal: checkoutData.taxTotal,
@@ -184,6 +186,11 @@ export class OrdersService {
 
     transaction.status = PaymentTransactionStatus.SUCCESS;
     transaction.paystackStatus = paystackData.status;
+    transaction.paystackChannel =
+      paystackData.channel ?? transaction.paystackChannel;
+    transaction.methodOfPayment = this.mapPaystackChannelToPaymentMethod(
+      paystackData.channel ?? transaction.paystackChannel,
+    );
     transaction.paidAt = new Date(paystackData.paid_at ?? Date.now());
 
     const order = await this.createOrderFromTransaction(transaction);
@@ -375,6 +382,37 @@ export class OrdersService {
   private generatePaystackReference(userId: string) {
     const uniqueSuffix = new Types.ObjectId().toString().slice(-8);
     return `PSK-${userId.slice(-6)}-${Date.now()}-${uniqueSuffix}`;
+  }
+
+  private mapPaystackChannelToPaymentMethod(channel?: string): PaymentMethod {
+    const normalized = channel?.trim().toLowerCase();
+
+    switch (normalized) {
+      case 'card':
+        return PaymentMethod.CARD;
+      case 'bank':
+        return PaymentMethod.BANK;
+      case 'ussd':
+        return PaymentMethod.USSD;
+      case 'qr':
+        return PaymentMethod.QR;
+      case 'mobile_money':
+      case 'mobile money':
+        return PaymentMethod.MOBILE_MONEY;
+      case 'bank_transfer':
+      case 'bank transfer':
+      case 'transfer':
+        return PaymentMethod.BANK_TRANSFER;
+      case 'eft':
+        return PaymentMethod.EFT;
+      case 'payattitude':
+        return PaymentMethod.PAYATTITUDE;
+      case 'apple_pay':
+      case 'apple pay':
+        return PaymentMethod.APPLE_PAY;
+      default:
+        return PaymentMethod.UNKNOWN;
+    }
   }
 
   private async createOrderFromTransaction(
