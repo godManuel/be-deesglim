@@ -41,6 +41,14 @@ type UploadedProductImageFile = {
 
 @Injectable()
 export class ProductsService {
+  findById(productId: string) {
+    return this.productModel
+      .findById(productId)
+      .populate('variants')
+      .populate('images')
+      .populate('category')
+      .exec();
+  }
   constructor(
     private readonly configService: ConfigService,
     @InjectModel(Product.name)

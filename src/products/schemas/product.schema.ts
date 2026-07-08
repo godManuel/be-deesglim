@@ -105,7 +105,7 @@ export class Product {
     description: 'Quantity (used by Closures/Frontals).',
   })
   @Prop({ type: Number })
-  quantity?: number;
+  quantity: number;
 
   @ApiPropertyOptional({
     example: 399.99,

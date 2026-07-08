@@ -1,7 +1,13 @@
-import { IsInt, IsNotEmpty, IsPositive, IsUUID } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsPositive,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 export class AddCartItemDto {
-  @IsUUID()
+  @IsString()
   productId: string;
 
   @IsInt()

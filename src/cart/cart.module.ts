@@ -7,6 +7,7 @@ import {
   ProductVariant,
   ProductVariantSchema,
 } from '../products/schemas/product-variant.schema';
+import { ProductsModule } from 'src/products/products.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import {
       { name: Cart.name, schema: CartSchema },
       { name: ProductVariant.name, schema: ProductVariantSchema },
     ]),
+    ProductsModule,
   ],
   controllers: [CartController],
   providers: [CartService],

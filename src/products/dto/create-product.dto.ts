@@ -73,10 +73,9 @@ export class CreateProductDto {
     description: 'Quantity (required for Closures/Frontals).',
     required: false,
   })
-  @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  quantity?: number;
+  quantity: number;
 
   @ApiProperty({
     example: 399.99,
