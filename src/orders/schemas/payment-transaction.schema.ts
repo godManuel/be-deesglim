@@ -25,13 +25,13 @@ export enum PaymentMethod {
 @Schema({ _id: false })
 export class CheckoutItemSnapshot {
   @Prop({ required: true })
-  productVariantId: string;
+  productId: string;
 
   @Prop({ required: true })
   name: string;
 
-  @Prop({ required: true })
-  sku: string;
+  @Prop({})
+  sku?: string;
 
   @Prop({ required: true })
   price: number;

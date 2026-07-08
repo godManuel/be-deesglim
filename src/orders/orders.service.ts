@@ -22,6 +22,7 @@ import {
   ProductVariant,
   ProductVariantDocument,
 } from '../products/schemas/product-variant.schema';
+import { ProductDocument } from 'src/products/schemas/product.schema';
 
 @Injectable()
 export class OrdersService {
@@ -328,7 +329,7 @@ export class OrdersService {
   ) {
     const cart = await this.cartModel
       .findOne({ userId: new Types.ObjectId(userId), status: 'ACTIVE' })
-      .populate('items.variant')
+      .populate('items.product')
       .exec();
 
     if (!cart || !cart.items?.length) {
@@ -336,18 +337,18 @@ export class OrdersService {
     }
 
     const snapshotItems = cart.items.map((cartItem: any) => {
-      const variant = cartItem.variant as ProductVariantDocument;
-      if (!variant || variant.price === undefined || variant.price === null) {
+      const product = cartItem.product as ProductDocument;
+      if (!product || product.price === undefined || product.price === null) {
         throw new BadRequestException(
-          'Cart contains an invalid variant with missing price.',
+          'Cart contains an invalid product with missing price.',
         );
       }
 
       return {
-        productVariantId: variant._id.toString(),
-        name: (variant as any).name ?? variant.sku,
-        sku: variant.sku,
-        price: Number(variant.price),
+        productId: product._id.toString(),
+        name: (product as any).name ?? '',
+        // sku: product.sku,
+        price: Number(product.price),
         quantity: Number(cartItem.quantity),
       };
     });
