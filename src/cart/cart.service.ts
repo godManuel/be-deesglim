@@ -19,7 +19,12 @@ export class CartService {
   async findOrCreateCart(userId: string): Promise<CartDocument> {
     let cart = await this.cartModel
       .findOne({ userId: new Types.ObjectId(userId), status: 'ACTIVE' })
-      .populate('items.product')
+      .populate({
+        path: 'items.product',
+        populate: {
+          path: 'images',
+        },
+      })
       .exec();
     if (!cart) {
       cart = await new this.cartModel({
