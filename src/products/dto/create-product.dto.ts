@@ -21,14 +21,16 @@ import {
 export class CreateProductDto {
   @ApiProperty({ example: 'Example Product', description: 'Product name' })
   @IsNotEmpty()
-  name: string;
+  name = '';
 
   @ApiProperty({
     example: 'example-product',
     description: 'Product slug identifier',
+    required: false,
   })
-  @IsNotEmpty()
-  slug: string;
+  @IsOptional()
+  @IsString()
+  slug?: string;
 
   @ApiProperty({
     example: 99.99,
@@ -37,7 +39,7 @@ export class CreateProductDto {
   @IsNotEmpty()
   @Type(() => Number)
   @IsNumber()
-  price: number;
+  price = 0;
 
   @ApiProperty({
     example: '5x5',
@@ -156,7 +158,7 @@ export class CreateProductDto {
   })
   @IsNotEmpty()
   @IsString()
-  category: string;
+  category = '';
 
   @ApiProperty({ type: [CreateProductVariantDto], required: false })
   @IsOptional()

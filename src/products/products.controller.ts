@@ -1,10 +1,13 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   Get,
   Param,
   Post,
   Query,
+  UploadedFiles,
+  UseInterceptors,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -13,6 +16,7 @@ import {
   ApiResponse,
   ApiBody,
   ApiBearerAuth,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -22,6 +26,15 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../users/schemas/user.schema';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
+
+type UploadedProductImageFile = {
+  buffer: Buffer;
+  mimetype: string;
+  originalname: string;
+};
 
 @ApiTags('Products')
 @Controller('products')
@@ -88,6 +101,8 @@ export class ProductsController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @UseInterceptors(FilesInterceptor('images', 10))
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'Create a new product',
     description:
@@ -95,8 +110,22 @@ export class ProductsController {
   })
   @ApiBody({ type: CreateProductDto })
   @ApiResponse({ status: 201, description: 'Product created successfully' })
-  create(@Body() product: CreateProductDto) {
-    return this.productsService.create(product);
+  create(
+    @Body() body: Record<string, any>,
+    @UploadedFiles() files: UploadedProductImageFile[] = [],
+  ) {
+    const productPayload = this.normalizeCreateProductPayload(body, files);
+    const product = plainToInstance(CreateProductDto, productPayload);
+    const validationErrors = validateSync(product, {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    });
+
+    if (validationErrors.length > 0) {
+      throw new BadRequestException(validationErrors);
+    }
+
+    return this.productsService.create(product, files);
   }
 
   @Post('categories')
@@ -110,5 +139,58 @@ export class ProductsController {
   @ApiResponse({ status: 201, description: 'Category created successfully' })
   createCategory(@Body() category: CreateCategoryDto) {
     return this.productsService.createCategory(category);
+  }
+
+  private normalizeCreateProductPayload(
+    body: Record<string, any>,
+    files: UploadedProductImageFile[],
+  ): Record<string, any> {
+    const parseBoolean = (value: unknown) => value === true || value === 'true';
+    const parseNumber = (value: unknown) => {
+      if (value === undefined || value === null || value === '') {
+        return value;
+      }
+
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? value : parsed;
+    };
+    const parseJsonValue = <T>(value: unknown, fallback: T): T => {
+      if (value === undefined || value === null || value === '') {
+        return fallback;
+      }
+
+      if (typeof value !== 'string') {
+        return value as T;
+      }
+
+      try {
+        return JSON.parse(value) as T;
+      } catch {
+        return fallback;
+      }
+    };
+
+    return {
+      ...body,
+      price: parseNumber(body.price),
+      quantity: parseNumber(body.quantity),
+      oldPrice: parseNumber(body.oldPrice),
+      newPrice: parseNumber(body.newPrice),
+      headSize: parseNumber(body.headSize),
+      grams: parseNumber(body.grams),
+      isVisible: parseBoolean(body.isVisible),
+      isFeatured: parseBoolean(body.isFeatured),
+      allowAnyColor: parseBoolean(body.allowAnyColor),
+      laceCustomizationAvailable: parseBoolean(body.laceCustomizationAvailable),
+      laceSizes: parseJsonValue<string[]>(body.laceSizes, []),
+      laceTypes: parseJsonValue<string[]>(body.laceTypes, []),
+      lengthOptions: parseJsonValue<string[]>(body.lengthOptions, []),
+      densityOptions: parseJsonValue<string[]>(body.densityOptions, []),
+      headSizes: parseJsonValue<number[]>(body.headSizes, []),
+      colors: parseJsonValue<string[]>(body.colors, []),
+      textureOptions: parseJsonValue<string[]>(body.textureOptions, []),
+      variants: parseJsonValue(body.variants, []),
+      images: parseJsonValue(body.images, []),
+    };
   }
 }

@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
+import { createHash } from 'crypto';
 import { Model, Types } from 'mongoose';
 import {
   Category,
@@ -30,9 +32,16 @@ import {
 } from '../orders/schemas/order.schema';
 import { TopCategoriesQueryDto } from './dto/top-categories-query.dto';
 
+type UploadedProductImageFile = {
+  buffer: Buffer;
+  mimetype: string;
+  originalname: string;
+};
+
 @Injectable()
 export class ProductsService {
   constructor(
+    private readonly configService: ConfigService,
     @InjectModel(Product.name)
     private readonly productModel: Model<ProductDocument>,
     @InjectModel(ProductVariant.name)
@@ -45,7 +54,14 @@ export class ProductsService {
     private readonly orderModel: Model<OrderDocument>,
   ) {}
 
-  async create(createProductDto: CreateProductDto): Promise<Product> {
+  async create(
+    createProductDto: CreateProductDto,
+    imageFiles: UploadedProductImageFile[] = [],
+  ): Promise<Product> {
+    const slug = await this.generateUniqueProductSlug(
+      createProductDto.slug || createProductDto.name,
+    );
+
     const category = await this.categoryModel.findOne({
       $or: [
         { _id: createProductDto.category },
@@ -116,6 +132,24 @@ export class ProductsService {
     }
 
     const imageIds: Types.ObjectId[] = [];
+    if (imageFiles.length) {
+      const uploadedImages = await Promise.all(
+        imageFiles.map((file, index) =>
+          this.uploadImageToCloudinary(file, index),
+        ),
+      );
+
+      const cloudinaryImages = await this.imageModel.insertMany(
+        uploadedImages.map((image, index) => ({
+          url: image.url,
+          altText: image.altText,
+          sortOrder: image.sortOrder ?? index,
+        })),
+      );
+
+      imageIds.push(...cloudinaryImages.map((image) => image._id));
+    }
+
     if (createProductDto.images?.length) {
       const images = await this.imageModel.insertMany(
         createProductDto.images.map((image: CreateProductImageDto) => ({
@@ -128,6 +162,7 @@ export class ProductsService {
 
     const product = new this.productModel({
       ...createProductDto,
+      slug,
       allowAnyColor:
         createProductDto.customWigType === CustomWigType.MAKE_FROM_SCRATCH
           ? true
@@ -142,6 +177,84 @@ export class ProductsService {
     });
 
     return product.save();
+  }
+
+  private async generateUniqueProductSlug(source: string): Promise<string> {
+    const baseSlug = source
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    if (!baseSlug) {
+      throw new BadRequestException(
+        'Product name is required to generate slug.',
+      );
+    }
+
+    let slug = baseSlug;
+    let suffix = 1;
+
+    while (await this.productModel.exists({ slug })) {
+      slug = `${baseSlug}-${suffix}`;
+      suffix += 1;
+    }
+
+    return slug;
+  }
+
+  private async uploadImageToCloudinary(
+    file: UploadedProductImageFile,
+    sortOrder: number,
+  ): Promise<{ url: string; altText: string; sortOrder: number }> {
+    const cloudName = this.configService.getOrThrow<string>(
+      'CLOUDINARY_CLOUD_NAME',
+    );
+    const apiKey = this.configService.getOrThrow<string>('CLOUDINARY_API_KEY');
+    const apiSecret = this.configService.getOrThrow<string>(
+      'CLOUDINARY_API_SECRET',
+    );
+    const folder =
+      this.configService.get<string>('CLOUDINARY_FOLDER') ?? 'Deesglim';
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const signature = createHash('sha1')
+      .update(`folder=${folder}&timestamp=${timestamp}${apiSecret}`)
+      .digest('hex');
+
+    const formData = new FormData();
+    formData.append(
+      'file',
+      `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
+    );
+    formData.append('api_key', apiKey);
+    formData.append('timestamp', timestamp);
+    formData.append('folder', folder);
+    formData.append('signature', signature);
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      {
+        method: 'POST',
+        body: formData,
+      },
+    );
+
+    if (!response.ok) {
+      throw new BadRequestException(
+        `Cloudinary upload failed: ${await response.text()}`,
+      );
+    }
+
+    const result = (await response.json()) as {
+      secure_url: string;
+      public_id: string;
+    };
+
+    return {
+      url: result.secure_url,
+      altText: file.originalname,
+      sortOrder,
+    };
   }
 
   async createCategory(
