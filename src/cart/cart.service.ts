@@ -27,18 +27,19 @@ export class CartService {
 
   async addItem(
     userId: string,
-    variantId: string,
+    productId: string,
     quantity: number,
   ): Promise<CartDocument> {
     const cart = await this.findOrCreateCart(userId);
-    const variantObjectId = new Types.ObjectId(variantId);
+    const productObjectId = new Types.ObjectId(productId);
     const item = cart.items.find(
-      (existing) => existing.variant.toString() === variantObjectId.toString(),
+      (existing) => existing.product.toString() === productObjectId.toString(),
     );
+
     if (item) {
       item.quantity += quantity;
     } else {
-      cart.items.push({ variant: variantObjectId, quantity } as CartItem);
+      cart.items.push({ product: productObjectId, quantity } as CartItem);
     }
     await cart.save();
     return this.findOrCreateCart(userId);
@@ -63,8 +64,8 @@ export class CartService {
 
   async removeItem(userId: string, itemId: string): Promise<CartDocument> {
     const cart = await this.findOrCreateCart(userId);
-    const item = cart.items.filter(
-      (item: any) => item._id?.toString() !== itemId,
+    const item = cart.items.find(
+      (item: any) => item._id?.toString() === itemId,
     );
     if (!item) {
       throw new NotFoundException('Cart item not found');

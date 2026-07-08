@@ -1,13 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { ProductVariant } from '../../products/schemas/product-variant.schema';
+import { Product } from 'src/products/schemas/product.schema';
 
 export type CartItemDocument = CartItem & Document;
 
 @Schema()
 export class CartItem {
-  @Prop({ type: Types.ObjectId, ref: ProductVariant.name, required: true })
-  variant: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: Product.name, required: true })
+  product: Types.ObjectId;
 
   @Prop({ required: true, min: 1 })
   quantity: number;
