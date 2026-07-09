@@ -3,13 +3,6 @@ import { IsNotEmpty, IsNumber, IsOptional, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateProductVariantDto {
-  @ApiProperty({
-    example: 'SKU-1234',
-    description: 'Unique SKU for the variant',
-  })
-  @IsNotEmpty()
-  sku: string;
-
   @ApiProperty({ example: 'Black', description: 'Product color' })
   @IsNotEmpty()
   color: string;

@@ -5,9 +5,6 @@ export type ProductVariantDocument = ProductVariant & Document;
 
 @Schema()
 export class ProductVariant {
-  @Prop({ required: true, unique: true })
-  sku: string;
-
   @Prop({ required: true })
   color: string;
 
@@ -27,4 +24,5 @@ export class ProductVariant {
   inventoryCount: number;
 }
 
-export const ProductVariantSchema = SchemaFactory.createForClass(ProductVariant);
+export const ProductVariantSchema =
+  SchemaFactory.createForClass(ProductVariant);

@@ -47,7 +47,14 @@ export class Product {
   @Prop({ required: true, unique: true })
   slug: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
+    example: 'SKU-1234',
+    description: 'Unique SKU for the product',
+  })
+  @Prop({ required: true, unique: true })
+  sku: string;
+
+  @ApiProperty({
     example: 'A luxurious silk hair extension.',
     description: 'Detailed product description',
   })

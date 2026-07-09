@@ -21,7 +21,7 @@ import {
 export class CreateProductDto {
   @ApiProperty({ example: 'Example Product', description: 'Product name' })
   @IsNotEmpty()
-  name = '';
+  name: string;
 
   @ApiProperty({
     example: 'example-product',
@@ -31,6 +31,14 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   slug?: string;
+
+  @ApiProperty({
+    example: 'SKU-1234',
+    description: 'Unique SKU for the variant',
+  })
+  @IsNotEmpty()
+  @IsString()
+  sku: string;
 
   @ApiProperty({
     example: 99.99,

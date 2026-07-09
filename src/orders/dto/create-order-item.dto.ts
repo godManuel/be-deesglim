@@ -3,7 +3,7 @@ import { IsInt, IsNotEmpty, IsNumber, IsString, Min } from 'class-validator';
 export class CreateOrderItemDto {
   @IsString()
   @IsNotEmpty()
-  productVariantId: string;
+  productId: string;
 
   @IsString()
   @IsNotEmpty()

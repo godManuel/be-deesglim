@@ -15,13 +15,13 @@ export enum OrderStatus {
 @Schema()
 export class OrderItem {
   @Prop({ required: true })
-  productVariantId: string;
+  productId: string;
 
   @Prop({ required: true })
   name: string;
 
-  @Prop({ required: true })
-  sku: string;
+  @Prop({})
+  sku?: string;
 
   @Prop({ required: true })
   price: number;

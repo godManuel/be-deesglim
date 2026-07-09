@@ -7,7 +7,12 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, Types } from 'mongoose';
-import { Order, OrderDocument, OrderStatus } from './schemas/order.schema';
+import {
+  Order,
+  OrderDocument,
+  OrderItem,
+  OrderStatus,
+} from './schemas/order.schema';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { ListOrdersQueryDto } from './dto/list-orders-query.dto';
 import { InitializeCheckoutDto } from './dto/initialize-checkout.dto';
@@ -22,13 +27,15 @@ import {
   ProductVariant,
   ProductVariantDocument,
 } from '../products/schemas/product-variant.schema';
-import { ProductDocument } from 'src/products/schemas/product.schema';
+import { Product, ProductDocument } from 'src/products/schemas/product.schema';
 
 @Injectable()
 export class OrdersService {
   constructor(
     @InjectModel(Order.name) private readonly orderModel: Model<OrderDocument>,
     @InjectModel(Cart.name) private readonly cartModel: Model<CartDocument>,
+    @InjectModel(Product.name)
+    private readonly productModel: Model<ProductDocument>,
     @InjectModel(PaymentTransaction.name)
     private readonly paymentTxModel: Model<PaymentTransactionDocument>,
     private readonly configService: ConfigService,
@@ -198,6 +205,8 @@ export class OrdersService {
     transaction.orderId = order._id as Types.ObjectId;
     await transaction.save();
 
+    await this.decrementProductStock(order.items);
+
     return {
       message: 'Payment verified and order created successfully.',
       order,
@@ -271,6 +280,30 @@ export class OrdersService {
 
     order.status = statusDto.status;
     return order.save();
+  }
+
+  private async decrementProductStock(orderItems: OrderItem[]): Promise<void> {
+    if (!orderItems?.length) return;
+
+    const bulkOps = orderItems.map((item) => ({
+      updateOne: {
+        filter: {
+          _id: new Types.ObjectId(item.productId),
+          quantity: { $gte: item.quantity },
+        },
+        update: {
+          $inc: { quantity: -item.quantity },
+        },
+      },
+    }));
+
+    const result = await this.productModel.bulkWrite(bulkOps);
+
+    if (result.matchedCount !== orderItems.length) {
+      console.error(
+        `Stock decrement mismatch: ${result.matchedCount}/${orderItems.length} items matched for order.`,
+      );
+    }
   }
 
   private async findAdminOrdersByStatus(
