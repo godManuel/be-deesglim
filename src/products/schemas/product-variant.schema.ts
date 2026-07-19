@@ -5,20 +5,62 @@ export type ProductVariantDocument = ProductVariant & Document;
 
 @Schema()
 export class ProductVariant {
-  @Prop({ required: true })
-  color: string;
-
-  @Prop({ required: true })
-  length: string;
-
-  @Prop({ required: true })
-  texture: string;
+  @Prop()
+  color?: string;
 
   @Prop()
-  capType?: string;
+  texture?: string;
+
+  @Prop()
+  length?: string;
+
+  @Prop()
+  laceSize?: string;
+
+  @Prop()
+  laceType?: string;
+
+  @Prop()
+  closureSize?: string;
+
+  @Prop()
+  frontalSize?: string;
+
+  @Prop()
+  headSize?: string;
+
+  @Prop()
+  parting?: string;
+
+  @Prop()
+  styling?: string;
+
+  @Prop()
+  hairType?: string;
+
+  @Prop()
+  customizationNote?: string;
+
+  @Prop()
+  specialNote?: string;
+
+  @Prop()
+  laceCustomization?: boolean;
+
+  @Prop()
+  whyChoose?: string;
+
+  @Prop()
+  whyNotChoose?: string;
+
+  @Prop({ default: 0 })
+  extraFee?: number;
+
+  @Prop()
+  oldPrice?: number;
 
   @Prop({ required: true })
-  price: number;
+  newPrice: number;
 
   @Prop({ default: 0 })
   inventoryCount: number;
