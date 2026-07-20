@@ -8,11 +8,7 @@ import {
   CategoryDocument,
   CategoryName,
 } from './schemas/category.schema';
-import {
-  CustomWigType,
-  Product,
-  ProductDocument,
-} from './schemas/product.schema';
+import { Product, ProductDocument } from './schemas/product.schema';
 import {
   ProductVariant,
   ProductVariantDocument,
@@ -84,50 +80,50 @@ export class ProductsService {
       );
     }
 
-    const isCustomWigCategory =
-      category.slug === 'custom-wigs' ||
-      category.name === CategoryName.CUSTOM_WIGS;
-    const isClosuresFrontalsCategory =
-      category.slug === 'closuresfrontals' ||
-      category.name === CategoryName.CLOSURES_FRONTALS;
-    const isLaceSupplyCategory =
-      category.slug === 'lace-supply' ||
-      category.name === CategoryName.LACE_SUPPLY;
+    // const isCustomWigCategory =
+    //   category.slug === 'custom-wigs' ||
+    //   category.name === CategoryName.CUSTOM_WIGS;
+    // const isClosuresFrontalsCategory =
+    //   category.slug === 'closuresfrontals' ||
+    //   category.name === CategoryName.CLOSURES_FRONTALS;
+    // const isLaceSupplyCategory =
+    //   category.slug === 'lace-supply' ||
+    //   category.name === CategoryName.LACE_SUPPLY;
 
-    if (isCustomWigCategory) {
-      if (
-        !createProductDto.laceSize ||
-        createProductDto.headSize === undefined ||
-        !createProductDto.color ||
-        createProductDto.grams === undefined ||
-        !createProductDto.length
-      ) {
-        throw new BadRequestException(
-          'Custom Wig products require laceSize, headSize, color, grams, and length.',
-        );
-      }
-    }
+    // if (isCustomWigCategory) {
+    //   if (
+    //     !createProductDto.laceSize ||
+    //     createProductDto.headSize === undefined ||
+    //     !createProductDto.color ||
+    //     createProductDto.grams === undefined ||
+    //     !createProductDto.length
+    //   ) {
+    //     throw new BadRequestException(
+    //       'Custom Wig products require laceSize, headSize, color, grams, and length.',
+    //     );
+    //   }
+    // }
 
-    if (isClosuresFrontalsCategory) {
-      if (
-        !createProductDto.laceSize ||
-        !createProductDto.length ||
-        !createProductDto.color ||
-        createProductDto.quantity === undefined ||
-        createProductDto.oldPrice === undefined ||
-        createProductDto.newPrice === undefined
-      ) {
-        throw new BadRequestException(
-          'Closures/Frontals products require laceSize, length, color, quantity, oldPrice, and newPrice.',
-        );
-      }
-    }
+    // if (isClosuresFrontalsCategory) {
+    //   if (
+    //     !createProductDto.laceSize ||
+    //     !createProductDto.length ||
+    //     !createProductDto.color ||
+    //     createProductDto.quantity === undefined ||
+    //     createProductDto.oldPrice === undefined ||
+    //     createProductDto.newPrice === undefined
+    //   ) {
+    //     throw new BadRequestException(
+    //       'Closures/Frontals products require laceSize, length, color, quantity, oldPrice, and newPrice.',
+    //     );
+    //   }
+    // }
 
-    if (!isLaceSupplyCategory && createProductDto.variants?.length) {
-      throw new BadRequestException(
-        'Variants can only be added to products in Lace Supply category.',
-      );
-    }
+    // if (!isLaceSupplyCategory && createProductDto.variants?.length) {
+    //   throw new BadRequestException(
+    //     'Variants can only be added to products in Lace Supply category.',
+    //   );
+    // }
 
     const variantIds: Types.ObjectId[] = [];
     if (createProductDto.variants?.length) {
@@ -170,16 +166,12 @@ export class ProductsService {
     }
 
     const product = new this.productModel({
-      ...createProductDto,
+      name: createProductDto.name,
       slug,
-      allowAnyColor:
-        createProductDto.customWigType === CustomWigType.MAKE_FROM_SCRATCH
-          ? true
-          : (createProductDto.allowAnyColor ?? false),
-      price:
-        isClosuresFrontalsCategory && createProductDto.newPrice !== undefined
-          ? createProductDto.newPrice
-          : createProductDto.price,
+      description: createProductDto.description,
+      color: createProductDto.color,
+      isVisible: createProductDto.isVisible ?? true,
+      isFeatured: createProductDto.isFeatured ?? false,
       category: category._id,
       variants: variantIds,
       images: imageIds,
@@ -328,12 +320,17 @@ export class ProductsService {
       .replace(/-+/g, '-');
 
     const aliasMap: Record<string, CategoryName> = {
-      'custom-wigs': CategoryName.CUSTOM_WIGS,
-      customwigs: CategoryName.CUSTOM_WIGS,
       'lace-supply': CategoryName.LACE_SUPPLY,
       lacesupply: CategoryName.LACE_SUPPLY,
+
       'closures-frontals': CategoryName.CLOSURES_FRONTALS,
       closuresfrontals: CategoryName.CLOSURES_FRONTALS,
+
+      'ready-to-ship-wigs': CategoryName.READY_TO_SHIP_WIGS,
+      readytoshipwigs: CategoryName.READY_TO_SHIP_WIGS,
+
+      'custom-wigs': CategoryName.CUSTOM_WIGS,
+      customwigs: CategoryName.CUSTOM_WIGS,
     };
 
     const categoryName = aliasMap[normalizedSlug] as CategoryName | undefined;
@@ -429,9 +426,10 @@ export class ProductsService {
     ]);
 
     const categoryOrder = [
-      CategoryName.CUSTOM_WIGS,
       CategoryName.LACE_SUPPLY,
       CategoryName.CLOSURES_FRONTALS,
+      CategoryName.READY_TO_SHIP_WIGS,
+      CategoryName.CUSTOM_WIGS,
     ];
 
     const totalRevenue = results.reduce(

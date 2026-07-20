@@ -293,7 +293,7 @@ export class DashboardService {
     const products = await this.productModel
       .find()
       .populate('variants')
-      .select('name quantity variants')
+      .select('name variants')
       .lean()
       .exec();
 
@@ -304,28 +304,14 @@ export class DashboardService {
       sku?: string;
       inventoryCount: number;
       severity: 'CRITICAL' | 'WARNING';
-      source: 'PRODUCT' | 'VARIANT';
+      source: 'VARIANT';
       message: string;
     }> = [];
 
     for (const product of products) {
-      const productQuantity =
-        typeof product.quantity === 'number' ? product.quantity : null;
-      if (productQuantity !== null && productQuantity <= warningThreshold) {
-        alerts.push({
-          productId: product._id.toString(),
-          productName: product.name,
-          inventoryCount: productQuantity,
-          severity:
-            productQuantity <= criticalThreshold ? 'CRITICAL' : 'WARNING',
-          source: 'PRODUCT',
-          message:
-            productQuantity <= criticalThreshold
-              ? `${productQuantity} units left`
-              : `${productQuantity} units remaining in stock`,
-        });
-      }
-
+      // Products no longer carry their own `quantity` — every product now
+      // sells through at least one variant, so inventory is only tracked
+      // (and alerted on) at the variant level via `inventoryCount`.
       for (const variant of (product.variants as unknown as ProductVariantDocument[]) ??
         []) {
         const inventoryCount = Number((variant as any).inventoryCount ?? 0);

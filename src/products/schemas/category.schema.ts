@@ -5,6 +5,7 @@ export type CategoryDocument = Category & Document;
 
 export enum CategoryName {
   CUSTOM_WIGS = 'Custom Wigs',
+  READY_TO_SHIP_WIGS = 'Ready to Ship Wigs',
   LACE_SUPPLY = 'Lace Supply',
   CLOSURES_FRONTALS = 'Closures/Frontals',
 }

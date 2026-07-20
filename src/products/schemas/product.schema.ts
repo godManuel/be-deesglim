@@ -8,6 +8,24 @@ import { ProductVariant } from './product-variant.schema';
 
 export type ProductDocument = Product & Document;
 
+// Mirrors the four storefront categories from the spec. Kept as its own
+// field (rather than only inferring it from the populated `category`
+// document) so business rules — which color options are valid, which
+// variant fields are expected, whether price lives on the product or the
+// variant — can be checked without a populate/lookup.
+export enum ProductType {
+  LACE_SUPPLY = 'LACE_SUPPLY',
+  CLOSURES_FRONTALS = 'CLOSURES_FRONTALS',
+  READY_TO_SHIP_WIGS = 'READY_TO_SHIP_WIGS',
+  CUSTOM_WIGS = 'CUSTOM_WIGS',
+}
+
+// Lace Supply is the only category with a restricted color palette.
+export enum LaceColor {
+  TRANSPARENT = 'Transparent',
+  BROWN = 'Brown',
+}
+
 @Schema({ timestamps: true })
 export class Product {
   @ApiProperty({
@@ -25,11 +43,13 @@ export class Product {
   slug: string;
 
   @ApiProperty({
-    example: 'SKU-1234',
-    description: 'Unique SKU for the product',
+    enum: ProductType,
+    example: ProductType.LACE_SUPPLY,
+    description:
+      'Which of the four storefront categories this product belongs to. Drives which product/variant fields are relevant (e.g. whether color is restricted, whether pricing lives on the product or the variant).',
   })
-  @Prop({ required: true, unique: true })
-  sku: string;
+  @Prop({ type: String, enum: ProductType, required: true })
+  productType: ProductType;
 
   @ApiProperty({
     example: 'A luxurious silk hair extension.',
@@ -40,19 +60,27 @@ export class Product {
 
   @ApiPropertyOptional({
     example: 'Natural Black',
-  })
-  @Prop()
-  color?: string;
-
-  @ApiProperty({
-    description: 'Product category',
+    description:
+      'Product-level color. Used by Lace Supply (restricted to Transparent/Brown — see LaceColor) and Ready to Ship Wigs (free text). Closures/Frontals tracks color per variant instead — see ProductVariant.color. Not used by Custom Wigs.',
   })
   @Prop({
-    type: Types.ObjectId,
-    ref: Category.name,
-    required: true,
+    type: String,
+    validate: {
+      // NOTE: `this` only resolves correctly on .save()/.create() — for
+      // findOneAndUpdate() etc. you need { runValidators: true, context: 'query' }
+      // and even then `this` refers to the query, not the document.
+      validator: function (this: Product, value?: string): boolean {
+        if (!value) return true;
+        if (this.productType === ProductType.LACE_SUPPLY) {
+          return (Object.values(LaceColor) as string[]).includes(value);
+        }
+        return true;
+      },
+      message: (props: { value: string }) =>
+        `"${props.value}" is not a valid lace color. Lace Supply products must be "${LaceColor.TRANSPARENT}" or "${LaceColor.BROWN}".`,
+    },
   })
-  category: Types.ObjectId;
+  color?: string;
 
   @ApiPropertyOptional({
     example: 'Luxury hair extension for styling and volume.',
@@ -75,7 +103,19 @@ export class Product {
   @Prop({ default: false })
   isFeatured: boolean;
 
-  @ApiProperty({ example: 99.99, description: 'Product price in USD' })
+  @ApiPropertyOptional({
+    example: false,
+    description:
+      'Lace Supply publish flag — whether this lace product is live in the Boutique storefront. Kept separate from `isVisible` in case Lace Supply goes through its own draft/publish workflow; consolidate the two fields if that turns out not to be needed.',
+  })
+  @Prop({ default: false })
+  publishToBoutique?: boolean;
+
+  @ApiProperty({
+    example: 99.99,
+    description:
+      'Base product price in USD. Used directly by Ready to Ship Wigs and Custom Wigs. Lace Supply and Closures/Frontals price per variant instead (see ProductVariant.newPrice/oldPrice) and can leave this at 0.',
+  })
   @Prop({ type: Number, default: 0 })
   price: number;
 
@@ -83,30 +123,8 @@ export class Product {
     example: '64a0a7fa79bcf6e5f0d9a6b3',
     description: 'Reference to the product category ID',
   })
-  @Prop({ type: Types.ObjectId, ref: Category.name })
+  @Prop({ type: Types.ObjectId, ref: Category.name, required: true })
   category: Types.ObjectId;
-
-  @ApiPropertyOptional({
-    type: [String],
-    example: ['Natural Black', 'Burgundy'],
-    description: 'Color options available for this custom wig.',
-  })
-  @Prop({ type: [String], default: [] })
-  colors?: string[];
-
-  @ApiPropertyOptional({
-    example: 'https://cdn.deesglim.com/guides/head-size-guide.pdf',
-    description: 'PDF URL for custom wig size guide.',
-  })
-  @Prop()
-  sizeGuidePdfUrl?: string;
-
-  @ApiPropertyOptional({
-    example: 'https://cdn.deesglim.com/guides/skin-tone-guide.pdf',
-    description: 'PDF URL for skin tone/tint shade guide.',
-  })
-  @Prop()
-  skinToneGuidePdfUrl?: string;
 
   @ApiPropertyOptional({
     example: ['64a0a7fa79bcf6e5f0d9a6b4'],
