@@ -165,23 +165,9 @@ export class DashboardService {
                 },
               },
               {
-                $lookup: {
-                  from: 'categories',
-                  localField: 'category',
-                  foreignField: '_id',
-                  as: 'categoryDoc',
-                },
-              },
-              {
-                $unwind: {
-                  path: '$categoryDoc',
-                  preserveNullAndEmptyArrays: true,
-                },
-              },
-              {
                 $project: {
                   _id: 0,
-                  categoryName: '$categoryDoc.name',
+                  productType: 1,
                 },
               },
             ],
@@ -190,17 +176,17 @@ export class DashboardService {
         },
         {
           $addFields: {
-            categoryName: {
+            productType: {
               $ifNull: [
-                { $arrayElemAt: ['$productMatch.categoryName', 0] },
-                'Uncategorized',
+                { $arrayElemAt: ['$productMatch.productType', 0] },
+                'UNKNOWN',
               ],
             },
           },
         },
         {
           $group: {
-            _id: '$categoryName',
+            _id: '$productType',
             revenue: {
               $sum: { $multiply: ['$items.price', '$items.quantity'] },
             },
@@ -220,7 +206,7 @@ export class DashboardService {
         orders: item.orders,
       })),
       categoryBreakdown: categoryBreakdown.map((item) => ({
-        category: item._id,
+        productType: item._id,
         revenue: Number(Number(item.revenue ?? 0).toFixed(2)),
         quantitySold: item.quantitySold,
       })),

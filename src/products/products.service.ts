@@ -6,7 +6,7 @@ import { Model, Types } from 'mongoose';
 import {
   Category,
   CategoryDocument,
-  CategoryName,
+  ProductType,
 } from './schemas/category.schema';
 import { Product, ProductDocument } from './schemas/product.schema';
 import {
@@ -319,27 +319,27 @@ export class ProductsService {
       .replace(/[^a-z0-9-]/g, '')
       .replace(/-+/g, '-');
 
-    const aliasMap: Record<string, CategoryName> = {
-      'lace-supply': CategoryName.LACE_SUPPLY,
-      lacesupply: CategoryName.LACE_SUPPLY,
+    const aliasMap: Record<string, ProductType> = {
+      'lace-supply': ProductType.LACE_SUPPLY,
+      lacesupply: ProductType.LACE_SUPPLY,
 
-      'closures-frontals': CategoryName.CLOSURES_FRONTALS,
-      closuresfrontals: CategoryName.CLOSURES_FRONTALS,
+      'closures-frontals': ProductType.CLOSURES_FRONTALS,
+      closuresfrontals: ProductType.CLOSURES_FRONTALS,
 
-      'ready-to-ship-wigs': CategoryName.READY_TO_SHIP_WIGS,
-      readytoshipwigs: CategoryName.READY_TO_SHIP_WIGS,
+      'ready-to-ship-wigs': ProductType.READY_TO_SHIP_WIGS,
+      readytoshipwigs: ProductType.READY_TO_SHIP_WIGS,
 
-      'custom-wigs': CategoryName.CUSTOM_WIGS,
-      customwigs: CategoryName.CUSTOM_WIGS,
+      'custom-wigs': ProductType.CUSTOM_WIGS,
+      customwigs: ProductType.CUSTOM_WIGS,
     };
 
-    const categoryName = aliasMap[normalizedSlug] as CategoryName | undefined;
+    const productType = aliasMap[normalizedSlug] as ProductType | undefined;
 
     return this.categoryModel
       .findOne({
         $or: [
           { slug: normalizedSlug },
-          { name: categoryName ?? input.trim() },
+          { name: productType ?? input.trim() },
           { name: input.trim() },
         ],
       })
@@ -426,10 +426,10 @@ export class ProductsService {
     ]);
 
     const categoryOrder = [
-      CategoryName.LACE_SUPPLY,
-      CategoryName.CLOSURES_FRONTALS,
-      CategoryName.READY_TO_SHIP_WIGS,
-      CategoryName.CUSTOM_WIGS,
+      ProductType.LACE_SUPPLY,
+      ProductType.CLOSURES_FRONTALS,
+      ProductType.READY_TO_SHIP_WIGS,
+      ProductType.CUSTOM_WIGS,
     ];
 
     const totalRevenue = results.reduce(

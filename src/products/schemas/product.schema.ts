@@ -8,18 +8,6 @@ import { ProductVariant } from './product-variant.schema';
 
 export type ProductDocument = Product & Document;
 
-// Mirrors the four storefront categories from the spec. Kept as its own
-// field (rather than only inferring it from the populated `category`
-// document) so business rules — which color options are valid, which
-// variant fields are expected, whether price lives on the product or the
-// variant — can be checked without a populate/lookup.
-export enum ProductType {
-  LACE_SUPPLY = 'LACE_SUPPLY',
-  CLOSURES_FRONTALS = 'CLOSURES_FRONTALS',
-  READY_TO_SHIP_WIGS = 'READY_TO_SHIP_WIGS',
-  CUSTOM_WIGS = 'CUSTOM_WIGS',
-}
-
 // Lace Supply is the only category with a restricted color palette.
 export enum LaceColor {
   TRANSPARENT = 'Transparent',
@@ -43,15 +31,6 @@ export class Product {
   slug: string;
 
   @ApiProperty({
-    enum: ProductType,
-    example: ProductType.LACE_SUPPLY,
-    description:
-      'Which of the four storefront categories this product belongs to. Drives which product/variant fields are relevant (e.g. whether color is restricted, whether pricing lives on the product or the variant).',
-  })
-  @Prop({ type: String, enum: ProductType, required: true })
-  productType: ProductType;
-
-  @ApiProperty({
     example: 'A luxurious silk hair extension.',
     description: 'Detailed product description',
   })
@@ -65,20 +44,7 @@ export class Product {
   })
   @Prop({
     type: String,
-    validate: {
-      // NOTE: `this` only resolves correctly on .save()/.create() — for
-      // findOneAndUpdate() etc. you need { runValidators: true, context: 'query' }
-      // and even then `this` refers to the query, not the document.
-      validator: function (this: Product, value?: string): boolean {
-        if (!value) return true;
-        if (this.productType === ProductType.LACE_SUPPLY) {
-          return (Object.values(LaceColor) as string[]).includes(value);
-        }
-        return true;
-      },
-      message: (props: { value: string }) =>
-        `"${props.value}" is not a valid lace color. Lace Supply products must be "${LaceColor.TRANSPARENT}" or "${LaceColor.BROWN}".`,
-    },
+    enum: [LaceColor.TRANSPARENT, LaceColor.BROWN],
   })
   color?: string;
 

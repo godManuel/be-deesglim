@@ -1,14 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty } from 'class-validator';
-import { CategoryName } from '../schemas/category.schema';
+import { ProductType } from '../schemas/category.schema';
 
 export class CreateCategoryDto {
   @ApiProperty({
-    example: CategoryName.CUSTOM_WIGS,
+    example: ProductType.CUSTOM_WIGS,
     description: 'Category name chosen from predefined category types',
-    enum: CategoryName,
+    enum: ProductType,
   })
   @IsNotEmpty()
-  @IsEnum(CategoryName)
-  name: CategoryName;
+  @IsEnum(ProductType)
+  name: ProductType;
 }
