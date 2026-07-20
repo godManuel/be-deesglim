@@ -9,10 +9,10 @@ export type CategoryDocument = Category & Document;
 // variant fields are expected, whether price lives on the product or the
 // variant — can be checked without a populate/lookup.
 export enum ProductType {
-  LACE_SUPPLY = 'LACE_SUPPLY',
-  CLOSURES_FRONTALS = 'CLOSURES_FRONTALS',
-  READY_TO_SHIP_WIGS = 'READY_TO_SHIP_WIGS',
-  CUSTOM_WIGS = 'CUSTOM_WIGS',
+  LACE_SUPPLY = 'Lace Supply',
+  CLOSURES_FRONTALS = 'Closures/Frontals',
+  READY_TO_SHIP_WIGS = 'Ready to Ship Wigs',
+  CUSTOM_WIGS = 'Custom Wigs',
 }
 
 @Schema({ timestamps: true })

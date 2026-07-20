@@ -77,13 +77,13 @@ export class Product {
   @Prop({ default: false })
   publishToBoutique?: boolean;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 99.99,
     description:
       'Base product price in USD. Used directly by Ready to Ship Wigs and Custom Wigs. Lace Supply and Closures/Frontals price per variant instead (see ProductVariant.newPrice/oldPrice) and can leave this at 0.',
   })
   @Prop({ type: Number, default: 0 })
-  price: number;
+  price?: number;
 
   @ApiProperty({
     example: '64a0a7fa79bcf6e5f0d9a6b3',
@@ -107,6 +107,21 @@ export class Product {
   })
   @Prop({ type: [{ type: Types.ObjectId, ref: ProductImage.name }] })
   images: Types.ObjectId[];
+
+  @ApiPropertyOptional({
+    required: false,
+    example: 'https://cdn.deesglim.com/guides/head-size-guide.pdf',
+    description: 'PDF URL for the custom wig size guide.',
+  })
+  @Prop({ type: String })
+  sizeGuidePdfUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://cdn.deesglim.com/guides/skin-tone-guide.pdf',
+    description: 'PDF URL for skin tone/tint shade guide.',
+  })
+  @Prop({ type: String })
+  skinToneGuidePdfUrl?: string;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);

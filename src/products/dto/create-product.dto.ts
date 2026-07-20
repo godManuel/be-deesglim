@@ -30,10 +30,10 @@ export class CreateProductDto {
     example: 99.99,
     description: 'Base product price',
   })
-  @IsNotEmpty()
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  price = 0;
+  price? = 0;
 
   @ApiProperty({
     example: 'Natural Black',
@@ -91,17 +91,6 @@ export class CreateProductDto {
   @ValidateNested({ each: true })
   @Type(() => CreateProductImageDto)
   images?: CreateProductImageDto[];
-
-  @ApiProperty({
-    type: [String],
-    required: false,
-    example: ['Natural Black', 'Chocolate Brown'],
-    description: 'Available color options.',
-  })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  colors?: string[];
 
   @ApiProperty({
     required: false,

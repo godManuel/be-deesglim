@@ -126,7 +126,7 @@ export class ProductVariant {
       'Custom Wigs only — whether lace customization (bleached knots + tinted lace) is included.',
   })
   @Prop()
-  laceCustomization?: boolean;
+  laceCustomization?: string;
 
   @ApiPropertyOptional({
     example: 'Extremely durable and beginner-friendly to install.',
