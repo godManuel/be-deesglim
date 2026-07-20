@@ -25,12 +25,17 @@ export class CartService {
   async findOrCreateCart(userId: string): Promise<CartDocument> {
     let cart = await this.cartModel
       .findOne({ userId: new Types.ObjectId(userId), status: 'ACTIVE' })
-      .populate({
-        path: 'items.product',
-        populate: {
-          path: 'images',
+      .populate([
+        {
+          path: 'items.product',
+          populate: {
+            path: 'images',
+          },
         },
-      })
+        {
+          path: 'items.variant',
+        },
+      ])
       .exec();
     if (!cart) {
       cart = await new this.cartModel({
@@ -45,6 +50,7 @@ export class CartService {
   async addItem(
     userId: string,
     productId: string,
+    variantId: string | undefined,
     quantity: number,
   ): Promise<CartDocument> {
     if (quantity <= 0) {
@@ -52,27 +58,55 @@ export class CartService {
     }
 
     const product = await this.productsService.findById(productId);
+
     if (!product) {
       throw new NotFoundException('Product not found');
     }
 
+    let availableQuantity = 0;
+    let variant: ProductVariantDocument | undefined;
+
+    if (variantId) {
+      variant = product.variants.find(
+        (v: any) => v._id.toString() === variantId,
+      ) as ProductVariantDocument | undefined;
+
+      if (!variant) {
+        throw new NotFoundException(
+          'The selected variant does not belong to this product',
+        );
+      }
+
+      availableQuantity = variant.inventoryCount;
+    } else {
+      availableQuantity = await this.getAvailableQuantity(
+        product.variants as unknown as Types.ObjectId[],
+      );
+    }
+
     const productObjectId = new Types.ObjectId(productId);
+
     const cart = await this.findOrCreateCart(userId);
-    const item = cart.items.find(
-      (existing) => existing.product.toString() === productObjectId.toString(),
-    );
+
+    const item = cart.items.find((existing) => {
+      const sameProduct =
+        existing.product.toString() === productObjectId.toString();
+
+      if (!sameProduct) return false;
+
+      // Product without variant
+      if (!variantId) {
+        return !existing.variant;
+      }
+
+      // Product with variant
+      return existing.variant?.toString() === variantId;
+    });
 
     const currentCartQuantity = item ? item.quantity : 0;
     const requestedTotalQuantity = currentCartQuantity + quantity;
 
-    // Stock is no longer tracked on the product itself — each variant now
-    // owns its own `inventoryCount`, so the product's available quantity
-    // is the sum of inventory across all of its variants.
-    const availableQuantity = await this.getAvailableQuantity(
-      product.variants as unknown as Types.ObjectId[],
-    );
-
-    if (availableQuantity < requestedTotalQuantity) {
+    if (requestedTotalQuantity > availableQuantity) {
       throw new BadRequestException(
         `Insufficient quantity for "${product.name}". Available: ${availableQuantity}, requested: ${requestedTotalQuantity}`,
       );
@@ -81,10 +115,15 @@ export class CartService {
     if (item) {
       item.quantity += quantity;
     } else {
-      cart.items.push({ product: productObjectId, quantity } as CartItem);
+      cart.items.push({
+        product: productObjectId,
+        variant: variantId ? new Types.ObjectId(variantId) : undefined,
+        quantity,
+      } as CartItem);
     }
 
     await cart.save();
+
     return this.findOrCreateCart(userId);
   }
 
@@ -93,15 +132,56 @@ export class CartService {
     itemId: string,
     quantity: number,
   ): Promise<CartDocument> {
+    if (quantity <= 0) {
+      throw new BadRequestException('Quantity must be greater than zero');
+    }
+
     const cart = await this.findOrCreateCart(userId);
+
     const item = cart.items.find(
       (item: any) => item._id?.toString() === itemId,
     );
+
     if (!item) {
       throw new NotFoundException('Cart item not found');
     }
+
+    const product = await this.productsService.findById(
+      item.product.toString(),
+    );
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    let availableQuantity = 0;
+
+    const variantId = item.variant;
+
+    if (variantId) {
+      const variant = await this.variantModel.findById(variantId);
+
+      if (!variant) {
+        throw new NotFoundException('Product variant not found');
+      }
+
+      availableQuantity = variant.inventoryCount;
+    } else {
+      availableQuantity = await this.getAvailableQuantity(
+        product.variants as Types.ObjectId[],
+      );
+    }
+
+    if (quantity > availableQuantity) {
+      throw new BadRequestException(
+        `Only ${availableQuantity} item(s) available.`,
+      );
+    }
+
     item.quantity = quantity;
+
     await cart.save();
+
     return this.findOrCreateCart(userId);
   }
 
@@ -113,7 +193,9 @@ export class CartService {
     if (!item) {
       throw new NotFoundException('Cart item not found');
     }
-
+    cart.items = cart.items.filter(
+      (item: any) => item._id?.toString() !== itemId,
+    );
     await cart.save();
     return this.findOrCreateCart(userId);
   }

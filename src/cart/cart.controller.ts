@@ -29,6 +29,7 @@ export class CartController {
     return this.cartService.addItem(
       request.user.id,
       addCartItemDto.productId,
+      addCartItemDto.variantId,
       addCartItemDto.quantity,
     );
   }

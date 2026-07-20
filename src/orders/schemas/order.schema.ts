@@ -17,6 +17,9 @@ export class OrderItem {
   @Prop({ required: true })
   productId: string;
 
+  @Prop()
+  variantId?: string;
+
   @Prop({ required: true })
   name: string;
 

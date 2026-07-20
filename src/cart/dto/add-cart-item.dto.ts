@@ -1,6 +1,7 @@
 import {
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsPositive,
   IsString,
   IsUUID,
@@ -13,4 +14,8 @@ export class AddCartItemDto {
   @IsInt()
   @IsPositive()
   quantity: number;
+
+  @IsString()
+  @IsOptional()
+  variantId?: string;
 }

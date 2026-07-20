@@ -36,6 +36,16 @@ export class CreateProductDto {
   price? = 0;
 
   @ApiProperty({
+    example: 10,
+    description: 'Available stock quantity for the product',
+    required: false,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  quantity?: number;
+
+  @ApiProperty({
     example: 'Natural Black',
     description: 'Color (required for Closures/Frontals and Custom Wigs).',
     required: false,

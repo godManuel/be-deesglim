@@ -45,6 +45,7 @@ export class ProductsService {
       .populate('category')
       .exec();
   }
+
   constructor(
     private readonly configService: ConfigService,
     @InjectModel(Product.name)

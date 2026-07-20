@@ -5,8 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, Model, Types } from 'mongoose';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
+import { FilterQuery, Model, Types, Connection, ClientSession } from 'mongoose';
 import {
   Order,
   OrderDocument,
@@ -32,10 +32,14 @@ import { Product, ProductDocument } from 'src/products/schemas/product.schema';
 @Injectable()
 export class OrdersService {
   constructor(
+    @InjectConnection()
+    private readonly connection: Connection,
     @InjectModel(Order.name) private readonly orderModel: Model<OrderDocument>,
     @InjectModel(Cart.name) private readonly cartModel: Model<CartDocument>,
     @InjectModel(Product.name)
     private readonly productModel: Model<ProductDocument>,
+    @InjectModel(ProductVariant.name)
+    private readonly variantModel: Model<ProductVariantDocument>,
     @InjectModel(PaymentTransaction.name)
     private readonly paymentTxModel: Model<PaymentTransactionDocument>,
     private readonly configService: ConfigService,
@@ -192,24 +196,38 @@ export class OrdersService {
       throw new BadRequestException('Payment amount mismatch detected.');
     }
 
-    transaction.status = PaymentTransactionStatus.SUCCESS;
-    transaction.paystackStatus = paystackData.status;
-    transaction.paystackChannel =
-      paystackData.channel ?? transaction.paystackChannel;
-    transaction.methodOfPayment = this.mapPaystackChannelToPaymentMethod(
-      paystackData.channel ?? transaction.paystackChannel,
-    );
-    transaction.paidAt = new Date(paystackData.paid_at ?? Date.now());
+    const session = await this.connection.startSession();
 
-    const order = await this.createOrderFromTransaction(transaction);
-    transaction.orderId = order._id as Types.ObjectId;
-    await transaction.save();
+    let order: OrderDocument;
 
-    await this.decrementProductStock(order.items);
+    try {
+      await session.withTransaction(async () => {
+        transaction.status = PaymentTransactionStatus.SUCCESS;
+        transaction.paystackStatus = paystackData.status;
+        transaction.paystackChannel =
+          paystackData.channel ?? transaction.paystackChannel;
+
+        transaction.methodOfPayment = this.mapPaystackChannelToPaymentMethod(
+          paystackData.channel ?? transaction.paystackChannel,
+        );
+
+        transaction.paidAt = new Date(paystackData.paid_at ?? Date.now());
+
+        order = await this.createOrderFromTransaction(transaction, session);
+
+        await this.decrementProductStock(order.items, session);
+
+        transaction.orderId = order._id as Types.ObjectId;
+
+        await transaction.save({ session });
+      });
+    } finally {
+      await session.endSession();
+    }
 
     return {
       message: 'Payment verified and order created successfully.',
-      order,
+      order: order!,
       reference,
     };
   }
@@ -282,27 +300,81 @@ export class OrdersService {
     return order.save();
   }
 
-  private async decrementProductStock(orderItems: OrderItem[]): Promise<void> {
+  private async decrementProductStock(
+    orderItems: OrderItem[],
+    session: ClientSession,
+  ): Promise<void> {
     if (!orderItems?.length) return;
 
-    const bulkOps = orderItems.map((item) => ({
-      updateOne: {
-        filter: {
-          _id: new Types.ObjectId(item.productId),
-          quantity: { $gte: item.quantity },
-        },
-        update: {
-          $inc: { quantity: -item.quantity },
-        },
-      },
-    }));
+    const productBulkOps: any[] = [];
+    const variantBulkOps: any[] = [];
 
-    const result = await this.productModel.bulkWrite(bulkOps);
+    for (const item of orderItems) {
+      if (item.variantId) {
+        variantBulkOps.push({
+          updateOne: {
+            filter: {
+              _id: new Types.ObjectId(item.variantId),
+              inventoryCount: { $gte: item.quantity },
+            },
+            update: {
+              $inc: {
+                inventoryCount: -item.quantity,
+              },
+            },
+          },
+        });
+      } else {
+        productBulkOps.push({
+          updateOne: {
+            filter: {
+              _id: new Types.ObjectId(item.productId),
+              quantity: { $gte: item.quantity },
+            },
+            update: {
+              $inc: {
+                quantity: -item.quantity,
+              },
+            },
+          },
+        });
+      }
+    }
 
-    if (result.matchedCount !== orderItems.length) {
-      console.error(
-        `Stock decrement mismatch: ${result.matchedCount}/${orderItems.length} items matched for order.`,
-      );
+    if (variantBulkOps.length) {
+      const variantResult = await this.variantModel.bulkWrite(variantBulkOps, {
+        session,
+      });
+
+      if (variantResult.matchedCount !== variantBulkOps.length) {
+        throw new BadRequestException(
+          'One or more selected product variants are no longer available in the requested quantity.',
+        );
+      }
+
+      if (variantResult.modifiedCount !== variantBulkOps.length) {
+        throw new BadRequestException(
+          'Unable to update inventory for one or more product variants.',
+        );
+      }
+    }
+
+    if (productBulkOps.length) {
+      const productResult = await this.productModel.bulkWrite(productBulkOps, {
+        session,
+      });
+
+      if (productResult.matchedCount !== productBulkOps.length) {
+        throw new BadRequestException(
+          'One or more products are no longer available in the requested quantity.',
+        );
+      }
+
+      if (productResult.modifiedCount !== productBulkOps.length) {
+        throw new BadRequestException(
+          'Unable to update inventory for one or more products.',
+        );
+      }
     }
   }
 
@@ -363,25 +435,74 @@ export class OrdersService {
     const cart = await this.cartModel
       .findOne({ userId: new Types.ObjectId(userId), status: 'ACTIVE' })
       .populate('items.product')
+      .populate('items.variant')
       .exec();
+
+    console.log(cart);
 
     if (!cart || !cart.items?.length) {
       throw new BadRequestException('Cannot checkout an empty cart.');
     }
 
+    for (const cartItem of cart.items as any[]) {
+      const product = cartItem.product as ProductDocument;
+      const variant = cartItem.variant as ProductVariantDocument | undefined;
+
+      if (!product) {
+        throw new BadRequestException('Cart contains an invalid product.');
+      }
+
+      if (variant) {
+        // Always get the latest inventory from the database
+        const latestVariant = await this.variantModel.findById(variant._id);
+
+        if (!latestVariant) {
+          throw new BadRequestException(
+            `"${product.name}" variant no longer exists.`,
+          );
+        }
+
+        if (cartItem.quantity > latestVariant.inventoryCount) {
+          throw new BadRequestException(
+            `"${product.name}" only has ${latestVariant.inventoryCount} item(s) remaining for the selected variant.`,
+          );
+        }
+      } else {
+        const latestProduct = await this.productModel.findById(product._id);
+
+        if (!latestProduct) {
+          throw new BadRequestException(`"${product.name}" no longer exists.`);
+        }
+
+        if (cartItem.quantity > latestProduct.quantity) {
+          throw new BadRequestException(
+            `"${product.name}" only has ${latestProduct.quantity} item(s) remaining.`,
+          );
+        }
+      }
+    }
+
     const snapshotItems = cart.items.map((cartItem: any) => {
       const product = cartItem.product as ProductDocument;
-      if (!product || product.price === undefined || product.price === null) {
+      const variant = cartItem.variant as ProductVariantDocument | undefined;
+
+      if (!product) {
+        throw new BadRequestException('Cart contains an invalid product.');
+      }
+
+      const price = variant ? Number(variant.newPrice) : Number(product.price);
+
+      if (Number.isNaN(price)) {
         throw new BadRequestException(
-          'Cart contains an invalid product with missing price.',
+          `Product "${product.name}" has no valid price.`,
         );
       }
 
       return {
         productId: product._id.toString(),
-        name: (product as any).name ?? '',
-        // sku: product.sku,
-        price: Number(product.price),
+        variantId: variant?._id.toString(),
+        name: product.name,
+        price,
         quantity: Number(cartItem.quantity),
       };
     });
@@ -451,6 +572,7 @@ export class OrdersService {
 
   private async createOrderFromTransaction(
     transaction: PaymentTransactionDocument,
+    session: ClientSession,
   ): Promise<OrderDocument> {
     const existingOrder = await this.orderModel
       .findOne({ paymentReference: transaction.reference })

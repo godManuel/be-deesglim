@@ -85,6 +85,18 @@ export class Product {
   @Prop({ type: Number, default: 0 })
   price?: number;
 
+  @ApiPropertyOptional({
+    example: 10,
+    description:
+      'Available stock quantity for the product. Used directly by Ready to Ship Wigs and Custom Wigs. Lace Supply and Closures/Frontals track inventory per variant instead (see ProductVariant.inventoryCount) and can leave this at 0.',
+  })
+  @Prop({
+    required: true,
+    default: 0,
+    min: 0,
+  })
+  quantity: number;
+
   @ApiProperty({
     example: '64a0a7fa79bcf6e5f0d9a6b3',
     description: 'Reference to the product category ID',
