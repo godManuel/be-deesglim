@@ -1,6 +1,4 @@
 import {
-  Body,
-  BadRequestException,
   Controller,
   Get,
   Param,
@@ -9,6 +7,9 @@ import {
   UploadedFiles,
   UseInterceptors,
   UseGuards,
+  Body,
+  BadRequestException,
+  Patch,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -20,6 +21,7 @@ import {
 } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { TopCategoriesQueryDto } from './dto/top-categories-query.dto';
 import { ListProductsQueryDto } from './dto/list-products-query.dto';
@@ -127,6 +129,34 @@ export class ProductsController {
     }
 
     return this.productsService.create(product, files);
+  }
+
+  @Post('custom')
+  @UseGuards(JwtAuthGuard)
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FilesInterceptor('images', 10))
+  async createCustomProduct(
+    @Body() createProductDto: CreateProductDto,
+    @UploadedFiles() imageFiles: UploadedProductImageFile[],
+  ) {
+    return this.productsService.createCustomProduct(
+      createProductDto,
+      imageFiles ?? [],
+    );
+  }
+
+  @Patch(':productId')
+  @UseInterceptors(FilesInterceptor('images', 10))
+  async updateProduct(
+    @Param('productId') productId: string,
+    @Body() updateProductDto: UpdateProductDto,
+    @UploadedFiles() imageFiles: UploadedProductImageFile[],
+  ) {
+    return this.productsService.updateProduct(
+      productId,
+      updateProductDto,
+      imageFiles,
+    );
   }
 
   @Post('categories')

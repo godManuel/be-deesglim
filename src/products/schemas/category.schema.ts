@@ -12,7 +12,7 @@ export enum ProductType {
   LACE_SUPPLY = 'Lace Supply',
   CLOSURES_FRONTALS = 'Closures/Frontals',
   READY_TO_SHIP_WIGS = 'Ready to Ship Wigs',
-  CUSTOM_WIGS = 'Custom Wigs',
+  CUSTOM_MADE = 'Custom Made',
 }
 
 @Schema({ timestamps: true })

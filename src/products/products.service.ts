@@ -21,6 +21,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { CreateProductVariantDto } from './dto/create-product-variant.dto';
 import { CreateProductImageDto } from './dto/create-product-image.dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 import {
   Order,
   OrderDocument,
@@ -81,51 +82,6 @@ export class ProductsService {
       );
     }
 
-    // const isCustomWigCategory =
-    //   category.slug === 'custom-wigs' ||
-    //   category.name === CategoryName.CUSTOM_WIGS;
-    // const isClosuresFrontalsCategory =
-    //   category.slug === 'closuresfrontals' ||
-    //   category.name === CategoryName.CLOSURES_FRONTALS;
-    // const isLaceSupplyCategory =
-    //   category.slug === 'lace-supply' ||
-    //   category.name === CategoryName.LACE_SUPPLY;
-
-    // if (isCustomWigCategory) {
-    //   if (
-    //     !createProductDto.laceSize ||
-    //     createProductDto.headSize === undefined ||
-    //     !createProductDto.color ||
-    //     createProductDto.grams === undefined ||
-    //     !createProductDto.length
-    //   ) {
-    //     throw new BadRequestException(
-    //       'Custom Wig products require laceSize, headSize, color, grams, and length.',
-    //     );
-    //   }
-    // }
-
-    // if (isClosuresFrontalsCategory) {
-    //   if (
-    //     !createProductDto.laceSize ||
-    //     !createProductDto.length ||
-    //     !createProductDto.color ||
-    //     createProductDto.quantity === undefined ||
-    //     createProductDto.oldPrice === undefined ||
-    //     createProductDto.newPrice === undefined
-    //   ) {
-    //     throw new BadRequestException(
-    //       'Closures/Frontals products require laceSize, length, color, quantity, oldPrice, and newPrice.',
-    //     );
-    //   }
-    // }
-
-    // if (!isLaceSupplyCategory && createProductDto.variants?.length) {
-    //   throw new BadRequestException(
-    //     'Variants can only be added to products in Lace Supply category.',
-    //   );
-    // }
-
     const variantIds: Types.ObjectId[] = [];
     if (createProductDto.variants?.length) {
       const variants = await this.variantModel.insertMany(
@@ -179,6 +135,242 @@ export class ProductsService {
     });
 
     return product.save();
+  }
+
+  async createCustomProduct(
+    createProductDto: CreateProductDto,
+    imageFiles: UploadedProductImageFile[] = [],
+  ): Promise<Product> {
+    // ---------------------------------------------------------------
+    // 1. Find the Custom Wigs category
+    // ---------------------------------------------------------------
+    const category = await this.categoryModel.findOne({
+      $or: [{ slug: 'custom-made' }, { name: ProductType.CUSTOM_MADE }],
+    });
+
+    if (!category) {
+      throw new BadRequestException(
+        'Custom Wigs category has not been configured.',
+      );
+    }
+
+    // ---------------------------------------------------------------
+    // 2. Generate a unique product slug
+    // ---------------------------------------------------------------
+    const slug = await this.generateUniqueProductSlug(
+      createProductDto.slug || createProductDto.name,
+    );
+
+    // ---------------------------------------------------------------
+    // 3. Create variants if provided
+    // ---------------------------------------------------------------
+    const variantIds: Types.ObjectId[] = [];
+
+    if (createProductDto.variants?.length) {
+      const variants = await this.variantModel.insertMany(
+        createProductDto.variants.map((variant: CreateProductVariantDto) => ({
+          ...variant,
+          inventoryCount: variant.inventoryCount ?? 0,
+        })),
+      );
+
+      variantIds.push(...variants.map((variant) => variant._id));
+    }
+
+    // ---------------------------------------------------------------
+    // 4. Upload product images to Cloudinary
+    // ---------------------------------------------------------------
+    const imageIds: Types.ObjectId[] = [];
+
+    if (imageFiles.length) {
+      const uploadedImages = await Promise.all(
+        imageFiles.map((file, index) =>
+          this.uploadImageToCloudinary(file, index),
+        ),
+      );
+
+      const cloudinaryImages = await this.imageModel.insertMany(
+        uploadedImages.map((image, index) => ({
+          url: image.url,
+          altText: image.altText,
+          sortOrder: image.sortOrder ?? index,
+        })),
+      );
+
+      imageIds.push(...cloudinaryImages.map((image) => image._id));
+    }
+
+    // ---------------------------------------------------------------
+    // 5. Save manually provided image URLs if any
+    // ---------------------------------------------------------------
+    if (createProductDto.images?.length) {
+      const images = await this.imageModel.insertMany(
+        createProductDto.images.map((image: CreateProductImageDto) => ({
+          ...image,
+          sortOrder: image.sortOrder ?? 0,
+        })),
+      );
+
+      imageIds.push(...images.map((image) => image._id));
+    }
+
+    // ---------------------------------------------------------------
+    // 6. Create the custom product
+    // ---------------------------------------------------------------
+    const product = new this.productModel({
+      name: createProductDto.name,
+      slug,
+      description: createProductDto.description,
+      color: createProductDto.color,
+
+      // Automatically assign Custom Wigs category
+      category: category._id,
+
+      isVisible: createProductDto.isVisible ?? true,
+      isFeatured: createProductDto.isFeatured ?? false,
+
+      variants: variantIds,
+      images: imageIds,
+    });
+
+    return product.save();
+  }
+
+  async updateProduct(
+    productId: string,
+    updateProductDto: UpdateProductDto,
+    imageFiles: UploadedProductImageFile[] = [],
+  ): Promise<Product> {
+    const product = await this.productModel.findById(productId);
+
+    if (!product) {
+      throw new BadRequestException('Product not found.');
+    }
+
+    let categoryId = product.category;
+
+    if (updateProductDto.category) {
+      const category = await this.categoryModel.findOne({
+        $or: [
+          { _id: updateProductDto.category },
+          { slug: updateProductDto.category },
+        ],
+      });
+
+      if (!category) {
+        throw new BadRequestException(
+          'Category not found. Provide a valid category id or slug.',
+        );
+      }
+
+      categoryId = category._id;
+    }
+
+    let slug = product.slug;
+
+    if (updateProductDto.name || updateProductDto.slug) {
+      const slugSource =
+        updateProductDto.slug || updateProductDto.name || product.name;
+
+      slug = await this.generateUniqueProductSlugForUpdate(
+        slugSource,
+        productId,
+      );
+    }
+
+    let variantIds = product.variants;
+
+    if (updateProductDto.variants !== undefined) {
+      const variants = await this.variantModel.insertMany(
+        updateProductDto.variants.map((variant: CreateProductVariantDto) => ({
+          ...variant,
+          inventoryCount: variant.inventoryCount ?? 0,
+        })),
+      );
+
+      variantIds = variants.map((variant) => variant._id);
+    }
+
+    let imageIds = product.images;
+
+    if (updateProductDto.images !== undefined) {
+      const images = await this.imageModel.insertMany(
+        updateProductDto.images.map((image: CreateProductImageDto) => ({
+          ...image,
+          sortOrder: image.sortOrder ?? 0,
+        })),
+      );
+
+      imageIds = images.map((image) => image._id);
+    }
+
+    if (imageFiles.length > 0) {
+      const uploadedImages = await Promise.all(
+        imageFiles.map((file, index) =>
+          this.uploadImageToCloudinary(file, index),
+        ),
+      );
+
+      const cloudinaryImages = await this.imageModel.insertMany(
+        uploadedImages.map((image, index) => ({
+          url: image.url,
+          altText: image.altText,
+          sortOrder: image.sortOrder ?? index,
+        })),
+      );
+
+      imageIds = [...imageIds, ...cloudinaryImages.map((image) => image._id)];
+    }
+
+    product.name = updateProductDto.name ?? product.name;
+    product.slug = slug;
+    product.description = updateProductDto.description ?? product.description;
+    product.color = updateProductDto.color ?? product.color;
+    product.isVisible = updateProductDto.isVisible ?? product.isVisible;
+    product.isFeatured = updateProductDto.isFeatured ?? product.isFeatured;
+    product.category = categoryId;
+    product.variants = variantIds;
+    product.images = imageIds;
+
+    return product.save();
+  }
+
+  /**
+   * Generates a unique product slug during an update.
+   *
+   * The current product is excluded from the uniqueness check,
+   * so keeping the same slug will not cause a conflict.
+   */
+  private async generateUniqueProductSlugForUpdate(
+    source: string,
+    productId: string,
+  ): Promise<string> {
+    const baseSlug = source
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    if (!baseSlug) {
+      throw new BadRequestException(
+        'Product name is required to generate slug.',
+      );
+    }
+
+    let slug = baseSlug;
+    let suffix = 1;
+
+    while (
+      await this.productModel.exists({
+        slug,
+        _id: { $ne: productId },
+      })
+    ) {
+      slug = `${baseSlug}-${suffix}`;
+      suffix += 1;
+    }
+
+    return slug;
   }
 
   private async generateUniqueProductSlug(source: string): Promise<string> {
@@ -330,8 +522,8 @@ export class ProductsService {
       'ready-to-ship-wigs': ProductType.READY_TO_SHIP_WIGS,
       readytoshipwigs: ProductType.READY_TO_SHIP_WIGS,
 
-      'custom-wigs': ProductType.CUSTOM_WIGS,
-      customwigs: ProductType.CUSTOM_WIGS,
+      'custom-made': ProductType.CUSTOM_MADE,
+      custommade: ProductType.CUSTOM_MADE,
     };
 
     const productType = aliasMap[normalizedSlug] as ProductType | undefined;
@@ -430,7 +622,7 @@ export class ProductsService {
       ProductType.LACE_SUPPLY,
       ProductType.CLOSURES_FRONTALS,
       ProductType.READY_TO_SHIP_WIGS,
-      ProductType.CUSTOM_WIGS,
+      ProductType.CUSTOM_MADE,
     ];
 
     const totalRevenue = results.reduce(
