@@ -27,11 +27,14 @@ export class CheckoutItemSnapshot {
   @Prop({ required: true })
   productId: string;
 
+  @Prop({
+    required: false,
+    default: null,
+  })
+  variantId?: string;
+
   @Prop({ required: true })
   name: string;
-
-  @Prop({})
-  sku?: string;
 
   @Prop({ required: true })
   price: number;

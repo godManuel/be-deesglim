@@ -213,9 +213,25 @@ export class OrdersService {
 
         transaction.paidAt = new Date(paystackData.paid_at ?? Date.now());
 
+        // 1. Create the order record (doesn't touch cart or stock yet).
         order = await this.createOrderFromTransaction(transaction, session);
 
+        // 2. Decrement stock. If this throws (e.g. insufficient inventory),
+        //    the entire transaction is rolled back — the order is discarded
+        //    and the cart is left untouched, so nothing is "cleared" on failure.
+
         await this.decrementProductStock(order.items, session);
+
+        // 3. Only after stock has been successfully decremented do we
+        //    retire the cart. This is the actual "clear cart after verify"
+        //    behavior you asked for.
+        await this.cartModel
+          .updateMany(
+            { userId: transaction.userId, status: 'ACTIVE' },
+            { $set: { status: 'ORDERED' } },
+            { session },
+          )
+          .exec();
 
         transaction.orderId = order._id as Types.ObjectId;
 
@@ -304,75 +320,105 @@ export class OrdersService {
     orderItems: OrderItem[],
     session: ClientSession,
   ): Promise<void> {
-    if (!orderItems?.length) return;
-
-    const productBulkOps: any[] = [];
-    const variantBulkOps: any[] = [];
+    if (!orderItems?.length) {
+      return;
+    }
 
     for (const item of orderItems) {
+      const quantity = Number(item.quantity);
+
+      if (!Number.isInteger(quantity) || quantity <= 0) {
+        throw new BadRequestException(`Invalid quantity for order item.`);
+      }
+
+      // ============================================================
+      // VARIANT PRODUCT
+      // ============================================================
       if (item.variantId) {
-        variantBulkOps.push({
-          updateOne: {
-            filter: {
-              _id: new Types.ObjectId(item.variantId),
-              inventoryCount: { $gte: item.quantity },
-            },
-            update: {
-              $inc: {
-                inventoryCount: -item.quantity,
-              },
+        const variantId = new Types.ObjectId(item.variantId);
+
+        const result = await this.variantModel.updateOne(
+          {
+            _id: variantId,
+            inventoryCount: {
+              $gte: quantity,
             },
           },
-        });
-      } else {
-        productBulkOps.push({
-          updateOne: {
-            filter: {
-              _id: new Types.ObjectId(item.productId),
-              quantity: { $gte: item.quantity },
-            },
-            update: {
-              $inc: {
-                quantity: -item.quantity,
-              },
+          {
+            $inc: {
+              inventoryCount: -quantity,
             },
           },
-        });
-      }
-    }
-
-    if (variantBulkOps.length) {
-      const variantResult = await this.variantModel.bulkWrite(variantBulkOps, {
-        session,
-      });
-
-      if (variantResult.matchedCount !== variantBulkOps.length) {
-        throw new BadRequestException(
-          'One or more selected product variants are no longer available in the requested quantity.',
+          {
+            session,
+          },
         );
+
+        if (result.matchedCount === 0) {
+          // Fetch the variant only for a meaningful error message.
+          const variant = await this.variantModel
+            .findById(variantId)
+            .session(session)
+            .select('_id inventoryCount productId')
+            .lean();
+
+          if (!variant) {
+            throw new BadRequestException(
+              `Product variant ${item.variantId} was not found.`,
+            );
+          }
+
+          throw new BadRequestException(
+            `Insufficient stock for product variant ${item.variantId}. ` +
+              `Available: ${variant.inventoryCount}, requested: ${quantity}.`,
+          );
+        }
+
+        continue;
       }
 
-      if (variantResult.modifiedCount !== variantBulkOps.length) {
-        throw new BadRequestException(
-          'Unable to update inventory for one or more product variants.',
-        );
-      }
-    }
-
-    if (productBulkOps.length) {
-      const productResult = await this.productModel.bulkWrite(productBulkOps, {
-        session,
-      });
-
-      if (productResult.matchedCount !== productBulkOps.length) {
-        throw new BadRequestException(
-          'One or more products are no longer available in the requested quantity.',
-        );
+      // ============================================================
+      // NORMAL PRODUCT WITHOUT VARIANT
+      // ============================================================
+      if (!item.productId) {
+        throw new BadRequestException('Order item is missing a productId.');
       }
 
-      if (productResult.modifiedCount !== productBulkOps.length) {
+      const productId = new Types.ObjectId(item.productId);
+
+      const result = await this.productModel.updateOne(
+        {
+          _id: productId,
+          quantity: {
+            $gte: quantity,
+          },
+        },
+        {
+          $inc: {
+            quantity: -quantity,
+          },
+        },
+        {
+          session,
+        },
+      );
+
+      if (result.matchedCount === 0) {
+        const product = await this.productModel
+          .findById(productId)
+          .session(session)
+          .select('_id quantity')
+          .lean();
+
+        if (!product) {
+          throw new BadRequestException(
+            `Product ${item.productId} was not found.`,
+          );
+        }
+
         throw new BadRequestException(
-          'Unable to update inventory for one or more products.',
+          `Insufficient stock for product ${item.productId}. ` +
+            `Available: ${product.quantity}, requested: ${quantity}.`,
         );
       }
     }
@@ -437,8 +483,6 @@ export class OrdersService {
       .populate('items.product')
       .populate('items.variant')
       .exec();
-
-    console.log(cart);
 
     if (!cart || !cart.items?.length) {
       throw new BadRequestException('Cannot checkout an empty cart.');
@@ -606,14 +650,10 @@ export class OrdersService {
       total: transaction.total,
     });
 
-    const savedOrder = await order.save();
-    await this.cartModel
-      .updateMany(
-        { userId: transaction.userId, status: 'ACTIVE' },
-        { $set: { status: 'ORDERED' } },
-      )
-      .exec();
-
-    return savedOrder;
+    // IMPORTANT: pass { session } here so this write is actually part of
+    // the surrounding transaction. Previously this was saved without the
+    // session, meaning the order could persist even if the transaction
+    // later rolled back.
+    return order.save({ session });
   }
 }
