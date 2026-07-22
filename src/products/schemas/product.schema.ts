@@ -126,6 +126,20 @@ export class Product {
   })
   @Prop({ type: String })
   skinToneGuidePdfUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'Extremely durable and beginner-friendly to install.',
+    description: 'Lace Supply only — reason to choose this lace.',
+  })
+  @Prop()
+  whyChoose?: string;
+
+  @ApiPropertyOptional({
+    example: 'Not recommended for very oily scalps.',
+    description: 'Lace Supply only — reason NOT to choose this lace.',
+  })
+  @Prop()
+  whyNotChoose?: string;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);

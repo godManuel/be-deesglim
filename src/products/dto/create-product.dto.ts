@@ -154,4 +154,18 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   skinToneGuidePdfUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'High quality materials',
+    description: 'Reasons to choose this variant',
+  })
+  @IsOptional()
+  whyChoose?: string;
+
+  @ApiPropertyOptional({
+    example: 'Limited stock',
+    description: 'Reasons not to choose this variant',
+  })
+  @IsOptional()
+  whyNotChoose?: string;
 }

@@ -129,20 +129,6 @@ export class ProductVariant {
   laceCustomization?: string;
 
   @ApiPropertyOptional({
-    example: 'Extremely durable and beginner-friendly to install.',
-    description: 'Lace Supply only — reason to choose this lace.',
-  })
-  @Prop()
-  whyChoose?: string;
-
-  @ApiPropertyOptional({
-    example: 'Not recommended for very oily scalps.',
-    description: 'Lace Supply only — reason NOT to choose this lace.',
-  })
-  @Prop()
-  whyNotChoose?: string;
-
-  @ApiPropertyOptional({
     example: 25,
     description:
       'Ready to Ship Wigs only — extra fee charged for the requested customization.',
