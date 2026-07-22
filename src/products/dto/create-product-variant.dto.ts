@@ -52,11 +52,13 @@ export class CreateProductVariantDto {
   frontalSize?: string;
 
   @ApiPropertyOptional({
-    example: 'Medium',
-    description: 'Head size for the variant',
+    example: 22.5,
+    description: 'Head circumference measurement in inches',
   })
   @IsOptional()
-  headSize?: string;
+  @Type(() => Number)
+  @IsNumber()
+  headSize?: number;
 
   @ApiPropertyOptional({
     example: 'Middle',
@@ -119,6 +121,8 @@ export class CreateProductVariantDto {
     description: 'Additional fee for the variant',
   })
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   extraFee?: number;
 
   @ApiPropertyOptional({
@@ -126,6 +130,8 @@ export class CreateProductVariantDto {
     description: 'Original price of the variant',
   })
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   oldPrice?: number;
 
   @ApiPropertyOptional({
@@ -133,6 +139,8 @@ export class CreateProductVariantDto {
     description: 'Discounted price of the variant',
   })
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   newPrice?: number;
 
   @ApiPropertyOptional({
@@ -141,6 +149,7 @@ export class CreateProductVariantDto {
   })
   @IsOptional()
   @Type(() => Number)
+  @IsNumber()
   @Min(0)
   inventoryCount?: number;
 }

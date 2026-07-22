@@ -67,7 +67,7 @@ export class CartService {
     let variant: ProductVariantDocument | undefined;
 
     if (variantId) {
-      variant = product.variants.find(
+      variant = product.variants?.find(
         (v: any) => v._id.toString() === variantId,
       ) as ProductVariantDocument | undefined;
 

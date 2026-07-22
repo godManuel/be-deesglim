@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsNotEmpty,
   IsOptional,
@@ -8,102 +8,138 @@ import {
   IsNumber,
   IsString,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { CreateProductVariantDto } from './create-product-variant.dto';
 import { CreateProductImageDto } from './create-product-image.dto';
 
 export class CreateProductDto {
-  @ApiProperty({ example: 'Example Product', description: 'Product name' })
+  @ApiProperty({
+    example: 'Example Product',
+    description: 'Product name',
+  })
   @IsNotEmpty()
+  @IsString()
   name: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'example-product',
     description: 'Product slug identifier',
-    required: false,
   })
   @IsOptional()
   @IsString()
   slug?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 99.99,
     description: 'Base product price',
   })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  price? = 0;
+  price?: number = 0;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 10,
     description: 'Available stock quantity for the product',
-    required: false,
   })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   quantity?: number;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'Natural Black',
     description: 'Color (required for Closures/Frontals and Custom Wigs).',
-    required: false,
   })
   @IsOptional()
   @IsString()
   color?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'This is the full product description.',
     description: 'Product description',
-    required: false,
   })
   @IsOptional()
+  @IsString()
   description?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: true,
     description: 'Visible in the catalog',
-    required: false,
   })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @IsBoolean()
   isVisible?: boolean;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: false,
     description: 'Featured product flag',
-    required: false,
   })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @IsBoolean()
   isFeatured?: boolean;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'library',
-    description: 'Category slug or id for the product',
+    description: 'Category slug or ID for the product',
   })
-  @IsNotEmpty()
-  @IsString()
-  category = '';
-
-  @ApiProperty({ type: [CreateProductVariantDto], required: false })
   @IsOptional()
+  @IsString()
+  category?: string;
+
+  @ApiPropertyOptional({
+    type: [CreateProductVariantDto],
+    description: 'Product variants as a JSON array',
+  })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    }
+
+    return value;
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateProductVariantDto)
   variants?: CreateProductVariantDto[];
 
-  @ApiProperty({ type: [CreateProductImageDto], required: false })
+  @ApiPropertyOptional({
+    type: [CreateProductImageDto],
+    description: 'Manually provided image objects',
+  })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    }
+
+    return value;
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateProductImageDto)
   images?: CreateProductImageDto[];
 
-  @ApiProperty({
-    required: false,
+  @ApiPropertyOptional({
     example: 'https://cdn.deesglim.com/guides/head-size-guide.pdf',
     description: 'PDF URL for the custom wig size guide.',
   })
@@ -111,8 +147,7 @@ export class CreateProductDto {
   @IsString()
   sizeGuidePdfUrl?: string;
 
-  @ApiProperty({
-    required: false,
+  @ApiPropertyOptional({
     example: 'https://cdn.deesglim.com/guides/skin-tone-guide.pdf',
     description: 'PDF URL for skin tone/tint shade guide.',
   })

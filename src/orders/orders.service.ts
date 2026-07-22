@@ -474,9 +474,11 @@ export class OrdersService {
           throw new BadRequestException(`"${product.name}" no longer exists.`);
         }
 
-        if (cartItem.quantity > latestProduct.quantity) {
+        const availableQuantity = latestProduct.quantity ?? 0;
+
+        if (cartItem.quantity > availableQuantity) {
           throw new BadRequestException(
-            `"${product.name}" only has ${latestProduct.quantity} item(s) remaining.`,
+            `"${product.name}" only has ${availableQuantity} item(s) remaining.`,
           );
         }
       }

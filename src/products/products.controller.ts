@@ -32,6 +32,7 @@ import { UserRole } from '../users/schemas/user.schema';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
+import { CreateCustomProductDto } from './dto/create-custom-product.dto';
 
 type UploadedProductImageFile = {
   buffer: Buffer;
@@ -136,11 +137,11 @@ export class ProductsController {
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FilesInterceptor('images', 10))
   async createCustomProduct(
-    @Body() createProductDto: CreateProductDto,
+    @Body() createCustomProductDto: CreateCustomProductDto,
     @UploadedFiles() imageFiles: UploadedProductImageFile[],
   ) {
     return this.productsService.createCustomProduct(
-      createProductDto,
+      createCustomProductDto,
       imageFiles ?? [],
     );
   }

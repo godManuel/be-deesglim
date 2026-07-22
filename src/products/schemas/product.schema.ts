@@ -70,14 +70,6 @@ export class Product {
   isFeatured: boolean;
 
   @ApiPropertyOptional({
-    example: false,
-    description:
-      'Lace Supply publish flag — whether this lace product is live in the Boutique storefront. Kept separate from `isVisible` in case Lace Supply goes through its own draft/publish workflow; consolidate the two fields if that turns out not to be needed.',
-  })
-  @Prop({ default: false })
-  publishToBoutique?: boolean;
-
-  @ApiPropertyOptional({
     example: 99.99,
     description:
       'Base product price in USD. Used directly by Ready to Ship Wigs and Custom Wigs. Lace Supply and Closures/Frontals price per variant instead (see ProductVariant.newPrice/oldPrice) and can leave this at 0.',
@@ -95,14 +87,14 @@ export class Product {
     default: 0,
     min: 0,
   })
-  quantity: number;
+  quantity?: number;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: '64a0a7fa79bcf6e5f0d9a6b3',
     description: 'Reference to the product category ID',
   })
-  @Prop({ type: Types.ObjectId, ref: Category.name, required: true })
-  category: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: Category.name })
+  category?: Types.ObjectId;
 
   @ApiPropertyOptional({
     example: ['64a0a7fa79bcf6e5f0d9a6b4'],
@@ -110,7 +102,7 @@ export class Product {
     type: [String],
   })
   @Prop({ type: [{ type: Types.ObjectId, ref: ProductVariant.name }] })
-  variants: Types.ObjectId[];
+  variants?: Types.ObjectId[];
 
   @ApiPropertyOptional({
     example: ['64a0a7fa79bcf6e5f0d9a6b5'],
@@ -118,7 +110,7 @@ export class Product {
     type: [String],
   })
   @Prop({ type: [{ type: Types.ObjectId, ref: ProductImage.name }] })
-  images: Types.ObjectId[];
+  images?: Types.ObjectId[];
 
   @ApiPropertyOptional({
     required: false,

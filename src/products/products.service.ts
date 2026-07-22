@@ -29,6 +29,7 @@ import {
 } from '../orders/schemas/order.schema';
 import { TopCategoriesQueryDto } from './dto/top-categories-query.dto';
 import { ListProductsQueryDto } from './dto/list-products-query.dto';
+import { CreateCustomProductDto } from './dto/create-custom-product.dto';
 
 type UploadedProductImageFile = {
   buffer: Buffer;
@@ -138,7 +139,7 @@ export class ProductsService {
   }
 
   async createCustomProduct(
-    createProductDto: CreateProductDto,
+    createCustomProductDto: CreateCustomProductDto,
     imageFiles: UploadedProductImageFile[] = [],
   ): Promise<Product> {
     // ---------------------------------------------------------------
@@ -158,7 +159,7 @@ export class ProductsService {
     // 2. Generate a unique product slug
     // ---------------------------------------------------------------
     const slug = await this.generateUniqueProductSlug(
-      createProductDto.slug || createProductDto.name,
+      createCustomProductDto.slug || createCustomProductDto.name,
     );
 
     // ---------------------------------------------------------------
@@ -166,12 +167,14 @@ export class ProductsService {
     // ---------------------------------------------------------------
     const variantIds: Types.ObjectId[] = [];
 
-    if (createProductDto.variants?.length) {
+    if (createCustomProductDto.variants?.length) {
       const variants = await this.variantModel.insertMany(
-        createProductDto.variants.map((variant: CreateProductVariantDto) => ({
-          ...variant,
-          inventoryCount: variant.inventoryCount ?? 0,
-        })),
+        createCustomProductDto.variants.map(
+          (variant: CreateProductVariantDto) => ({
+            ...variant,
+            inventoryCount: variant.inventoryCount ?? 0,
+          }),
+        ),
       );
 
       variantIds.push(...variants.map((variant) => variant._id));
@@ -201,36 +204,35 @@ export class ProductsService {
     }
 
     // ---------------------------------------------------------------
-    // 5. Save manually provided image URLs if any
-    // ---------------------------------------------------------------
-    if (createProductDto.images?.length) {
-      const images = await this.imageModel.insertMany(
-        createProductDto.images.map((image: CreateProductImageDto) => ({
-          ...image,
-          sortOrder: image.sortOrder ?? 0,
-        })),
-      );
-
-      imageIds.push(...images.map((image) => image._id));
-    }
-
-    // ---------------------------------------------------------------
-    // 6. Create the custom product
+    // 5. Create the custom product
     // ---------------------------------------------------------------
     const product = new this.productModel({
-      name: createProductDto.name,
+      name: createCustomProductDto.name,
+
       slug,
-      description: createProductDto.description,
-      color: createProductDto.color,
+
+      description: createCustomProductDto.description,
+
+      color: createCustomProductDto.color,
 
       // Automatically assign Custom Wigs category
       category: category._id,
 
-      isVisible: createProductDto.isVisible ?? true,
-      isFeatured: createProductDto.isFeatured ?? false,
+      price: createCustomProductDto.price ?? 0,
+
+      quantity: createCustomProductDto.quantity ?? 0,
+
+      isVisible: createCustomProductDto.isVisible ?? true,
+
+      isFeatured: createCustomProductDto.isFeatured ?? false,
 
       variants: variantIds,
+
       images: imageIds,
+
+      sizeGuidePdfUrl: createCustomProductDto.sizeGuidePdfUrl,
+
+      skinToneGuidePdfUrl: createCustomProductDto.skinToneGuidePdfUrl,
     });
 
     return product.save();
@@ -291,7 +293,7 @@ export class ProductsService {
       variantIds = variants.map((variant) => variant._id);
     }
 
-    let imageIds = product.images;
+    let imageIds: Types.ObjectId[] = [];
 
     if (updateProductDto.images !== undefined) {
       const images = await this.imageModel.insertMany(
@@ -319,7 +321,7 @@ export class ProductsService {
         })),
       );
 
-      imageIds = [...imageIds, ...cloudinaryImages.map((image) => image._id)];
+      imageIds.push(...cloudinaryImages.map((image) => image._id));
     }
 
     product.name = updateProductDto.name ?? product.name;
