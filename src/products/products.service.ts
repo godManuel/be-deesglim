@@ -133,6 +133,12 @@ export class ProductsService {
       category: category._id,
       variants: variantIds,
       images: imageIds,
+      whyChoose: createProductDto.whyChoose,
+      whyNotChoose: createProductDto.whyNotChoose,
+      price: createProductDto.price ?? 0,
+      quantity: createProductDto.quantity ?? 0,
+      sizeGuidePdfUrl: createProductDto.sizeGuidePdfUrl,
+      skinToneGuidePdfUrl: createProductDto.skinToneGuidePdfUrl,
     });
 
     return product.save();
