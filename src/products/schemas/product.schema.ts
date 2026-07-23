@@ -9,7 +9,7 @@ import { ProductVariant } from './product-variant.schema';
 export type ProductDocument = Product & Document;
 
 // Lace Supply is the only category with a restricted color palette.
-export enum LaceColor {
+export enum Color {
   TRANSPARENT = 'Transparent',
   BROWN = 'Brown',
 }
@@ -44,7 +44,7 @@ export class Product {
   })
   @Prop({
     type: [String],
-    enum: [LaceColor.TRANSPARENT, LaceColor.BROWN],
+    enum: Color,
   })
   color?: string[];
 

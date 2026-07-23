@@ -48,10 +48,24 @@ export class CreateProductDto {
   quantity?: number;
 
   @ApiPropertyOptional({
-    example: 'Natural Black',
-    description: 'Color (required for Closures/Frontals and Custom Wigs).',
+    example: ['BROWN', 'TRANSPARENT'],
+    description:
+      'Product colors. Required for Closures/Frontals and Custom Wigs.',
+    type: [String],
   })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    }
+
+    return value;
+  })
+  @IsArray()
   @IsString({ each: true })
   color?: string[];
 
