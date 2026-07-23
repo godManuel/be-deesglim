@@ -243,7 +243,10 @@ export class ProductsService {
     updateProductDto: UpdateProductDto,
     imageFiles: UploadedProductImageFile[] = [],
   ): Promise<Product> {
-    const product = await this.productModel.findById(productId);
+    const product = await this.productModel.findOne({
+      _id: productId,
+      isDeleted: false,
+    });
 
     if (!product) {
       throw new BadRequestException('Product not found.');
@@ -293,7 +296,7 @@ export class ProductsService {
       variantIds = variants.map((variant) => variant._id);
     }
 
-    let imageIds: Types.ObjectId[] = [];
+    let imageIds: Types.ObjectId[] = product.images ?? [];
 
     if (updateProductDto.images !== undefined) {
       const images = await this.imageModel.insertMany(
@@ -335,6 +338,46 @@ export class ProductsService {
     product.images = imageIds;
 
     return product.save();
+  }
+
+  async deleteProduct(productId: string): Promise<{
+    message: string;
+    deletedProductId: string;
+    deletedAt: Date;
+  }> {
+    const product = await this.productModel.findOne({
+      _id: productId,
+      isDeleted: false,
+    });
+
+    if (!product) {
+      throw new BadRequestException('Product not found.');
+    }
+
+    // ---------------------------------------------------------------
+    // 2. Soft delete the product
+    // ---------------------------------------------------------------
+    const deletedAt = new Date();
+
+    product.isDeleted = true;
+    product.deletedAt = deletedAt;
+
+    // Make sure deleted products are no longer visible
+    product.isVisible = false;
+
+    // ---------------------------------------------------------------
+    // 3. Save the soft-deleted product
+    // ---------------------------------------------------------------
+    await product.save();
+
+    // ---------------------------------------------------------------
+    // 4. Return response
+    // ---------------------------------------------------------------
+    return {
+      message: 'Product deleted successfully.',
+      deletedProductId: productId,
+      deletedAt,
+    };
   }
 
   /**

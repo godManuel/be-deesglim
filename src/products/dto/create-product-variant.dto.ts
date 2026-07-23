@@ -1,12 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsOptional, Min } from 'class-validator';
+import { IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class CreateProductVariantDto {
   @ApiPropertyOptional({ example: 'Black', description: 'Product color' })
   @IsOptional()
-  color?: string;
+  @IsString({ each: true })
+  color?: string[];
 
   @ApiPropertyOptional({ example: 'M', description: 'Variant length or size' })
   @IsOptional()

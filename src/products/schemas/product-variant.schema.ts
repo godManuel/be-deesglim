@@ -30,8 +30,8 @@ export class ProductVariant {
     example: 'Natural Black',
     description: 'Closures/Frontals only — color of this specific variant.',
   })
-  @Prop()
-  color?: string;
+  @Prop({ type: [String] })
+  color?: string[];
 
   @ApiPropertyOptional({
     example: 'Body Wave',

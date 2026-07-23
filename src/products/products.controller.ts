@@ -10,6 +10,7 @@ import {
   Body,
   BadRequestException,
   Patch,
+  Delete,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -158,6 +159,13 @@ export class ProductsController {
       updateProductDto,
       imageFiles,
     );
+  }
+
+  @Delete(':productId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async deleteProduct(@Param('productId') productId: string) {
+    return this.productsService.deleteProduct(productId);
   }
 
   @Post('categories')

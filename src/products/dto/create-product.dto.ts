@@ -52,8 +52,8 @@ export class CreateProductDto {
     description: 'Color (required for Closures/Frontals and Custom Wigs).',
   })
   @IsOptional()
-  @IsString()
-  color?: string;
+  @IsString({ each: true })
+  color?: string[];
 
   @ApiPropertyOptional({
     example: 'This is the full product description.',

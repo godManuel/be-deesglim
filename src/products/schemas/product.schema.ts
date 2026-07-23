@@ -43,10 +43,10 @@ export class Product {
       'Product-level color. Used by Lace Supply (restricted to Transparent/Brown — see LaceColor) and Ready to Ship Wigs (free text). Closures/Frontals tracks color per variant instead — see ProductVariant.color. Not used by Custom Wigs.',
   })
   @Prop({
-    type: String,
+    type: [String],
     enum: [LaceColor.TRANSPARENT, LaceColor.BROWN],
   })
-  color?: string;
+  color?: string[];
 
   @ApiPropertyOptional({
     example: 'Luxury hair extension for styling and volume.',
@@ -140,6 +140,12 @@ export class Product {
   })
   @Prop()
   whyNotChoose?: string;
+
+  @Prop({ default: false })
+  isDeleted: boolean;
+
+  @Prop()
+  deletedAt?: Date;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);

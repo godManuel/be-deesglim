@@ -1,0 +1,997 @@
+<!doctype html>
+
+<html class="light" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&amp;family=Playfair+Display:wght@500;600;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              'on-tertiary': '#ffffff',
+              'surface-bright': '#faf9f6',
+              'tertiary-container': '#2c2e1e',
+              'tertiary-fixed-dim': '#c8c8b0',
+              'secondary-container': '#fed65b',
+              error: '#ba1a1a',
+              'on-primary-fixed-variant': '#5b403c',
+              'surface-container-highest': '#e3e2e0',
+              'inverse-primary': '#e3beb8',
+              secondary: '#735c00',
+              'surface-container-lowest': '#ffffff',
+              'inverse-on-surface': '#f2f1ee',
+              surface: '#faf9f6',
+              'primary-fixed': '#ffdad4',
+              'on-surface': '#1a1c1a',
+              'outline-variant': '#d3c3c0',
+              background: '#faf9f6',
+              'on-error-container': '#93000a',
+              'on-primary': '#ffffff',
+              'on-primary-fixed': '#2b1613',
+              'on-tertiary-container': '#959680',
+              'on-surface-variant': '#504442',
+              'primary-fixed-dim': '#e3beb8',
+              'surface-dim': '#dbdad7',
+              primary: '#271310',
+              'secondary-fixed-dim': '#e9c349',
+              'on-secondary-container': '#745c00',
+              'on-secondary': '#ffffff',
+              'on-secondary-fixed-variant': '#574500',
+              'surface-variant': '#e3e2e0',
+              'surface-container-low': '#f4f3f1',
+              'surface-container': '#efeeeb',
+              'error-container': '#ffdad6',
+              'on-error': '#ffffff',
+              'on-background': '#1a1c1a',
+              'surface-container-high': '#e9e8e5',
+              'surface-tint': '#745853',
+              tertiary: '#18190b',
+              'on-tertiary-fixed-variant': '#474836',
+              'tertiary-fixed': '#e4e4cc',
+              'inverse-surface': '#2f312f',
+              outline: '#827472',
+              'secondary-fixed': '#ffe088',
+              'on-secondary-fixed': '#241a00',
+              'on-primary-container': '#ae8d87',
+              'primary-container': '#3e2723',
+              'on-tertiary-fixed': '#1b1d0e',
+            },
+            borderRadius: {
+              DEFAULT: '0.25rem',
+              lg: '0.5rem',
+              xl: '0.75rem',
+              full: '9999px',
+            },
+            spacing: {
+              gutter: '24px',
+              'stack-lg': '32px',
+              'stack-sm': '8px',
+              'container-max': '1440px',
+              'margin-mobile': '20px',
+              'margin-desktop': '80px',
+              'stack-md': '16px',
+              'section-gap': '120px',
+            },
+            fontFamily: {
+              'body-md': ['Montserrat'],
+              'body-lg': ['Montserrat'],
+              'headline-lg': ['Playfair Display'],
+              'headline-md': ['Playfair Display'],
+              'display-lg': ['Playfair Display'],
+              'label-sm': ['Montserrat'],
+              'headline-lg-mobile': ['Playfair Display'],
+            },
+            fontSize: {
+              'body-md': ['16px', { lineHeight: '1.6', fontWeight: '400' }],
+              'body-lg': ['18px', { lineHeight: '1.6', fontWeight: '400' }],
+              'headline-lg': ['40px', { lineHeight: '1.2', fontWeight: '600' }],
+              'headline-md': ['28px', { lineHeight: '1.3', fontWeight: '500' }],
+              'display-lg': [
+                '64px',
+                {
+                  lineHeight: '1.1',
+                  letterSpacing: '-0.02em',
+                  fontWeight: '700',
+                },
+              ],
+              'label-sm': [
+                '12px',
+                { lineHeight: '1', letterSpacing: '0.1em', fontWeight: '600' },
+              ],
+              'headline-lg-mobile': [
+                '32px',
+                { lineHeight: '1.2', fontWeight: '600' },
+              ],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .material-symbols-outlined {
+        font-variation-settings:
+          'FILL' 0,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24;
+      }
+      .glass-silk-border {
+        border: 1px solid rgba(255, 255, 255, 0.4);
+      }
+      .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-background text-on-background font-body-md selection:bg-secondary-fixed selection:text-on-secondary-fixed"
+  >
+    <header
+      class="sticky top-0 w-full z-50 flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4 bg-surface/70 backdrop-blur-xl border-b border-white/20 shadow-[0_10px_20px_rgba(39,19,16,0.05)]"
+    >
+      <div class="flex items-center gap-8">
+        <span
+          class="text-headline-md font-headline-md tracking-[0.2em] uppercase text-primary"
+          >DEESGLIM</span
+        >
+        <nav class="hidden md:flex gap-6 items-center">
+          <a
+            class="text-on-surface-variant font-medium text-label-sm font-label-sm hover:text-secondary transition-colors duration-300"
+            href="#"
+            >Shop</a
+          >
+          <a
+            class="text-on-surface-variant font-medium text-label-sm font-label-sm hover:text-secondary transition-colors duration-300"
+            href="#"
+            >Lace Guide</a
+          >
+          <a
+            class="text-on-surface-variant font-medium text-label-sm font-label-sm hover:text-secondary transition-colors duration-300"
+            href="#"
+            >Collections</a
+          >
+          <a
+            class="text-on-surface-variant font-medium text-label-sm font-label-sm hover:text-secondary transition-colors duration-300"
+            href="#"
+            >Atelier</a
+          >
+        </nav>
+      </div>
+      <div class="flex items-center gap-4">
+        <div
+          class="hidden lg:flex items-center bg-surface-container-low px-4 py-2 rounded-full border border-outline-variant/30"
+        >
+          <span
+            class="material-symbols-outlined text-[20px] text-on-surface-variant"
+            >search</span
+          >
+          <input
+            class="bg-transparent border-none focus:ring-0 text-label-sm font-label-sm ml-2 w-32"
+            placeholder="Search..."
+            type="text"
+          />
+        </div>
+        <div class="flex items-center gap-3">
+          <button
+            class="scale-100 hover:scale-[1.02] active:scale-95 transition-all p-2 rounded-full hover:bg-surface-container-high"
+          >
+            <span class="material-symbols-outlined text-primary">favorite</span>
+          </button>
+          <button
+            class="scale-100 hover:scale-[1.02] active:scale-95 transition-all p-2 rounded-full hover:bg-surface-container-high"
+          >
+            <span class="material-symbols-outlined text-primary"
+              >shopping_bag</span
+            >
+          </button>
+          <button
+            class="scale-100 hover:scale-[1.02] active:scale-95 transition-all p-2 rounded-full hover:bg-surface-container-high"
+          >
+            <span class="material-symbols-outlined text-primary">person</span>
+          </button>
+        </div>
+      </div>
+    </header>
+    <main>
+      <section
+        class="relative h-[921px] w-full flex items-center overflow-hidden"
+      >
+        <div class="absolute inset-0 z-0">
+          <img
+            class="w-full h-full object-cover object-center"
+            data-alt="A high-end editorial fashion photograph of a stunning model with flawlessly installed long, flowing hair extensions. The lighting is dramatic and high-contrast, characteristic of a luxury fashion magazine, emphasizing the texture of the hair. The background is a soft, muted cream tone that complements the espresso brown and champagne gold color palette of the DEESGLIM brand. The overall mood is sophisticated, opulent, and professional, evoking a sense of ethereal beauty."
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBmwQv8PefRico_97c1u3I2fIdiMNV49aGvzTTx1nYWaOY7feqZFvjRN2OZ2Hbuh6VuYTVpJ_SvvbOvl9WWizSTP2Cd2On44bqsZWFMv9PLlgOsAOJrNJ_9njZTHEhnS7fjhCbEdFDPOxlW_Q8rmNQMVpFWofRURZHevOIEAFqXRV3JKTfDT26VFU1zmizZiH7R09MwuhyglflHGXvDtcyUYyAVAT7DZoWNdFYcTnfM9Gyt3I8jGeUWtG_R4gfrqLf4IhB3Jl9Jw0r2"
+          />
+          <div
+            class="absolute inset-0 bg-gradient-to-r from-primary/40 to-transparent"
+          ></div>
+        </div>
+        <div
+          class="relative z-10 px-margin-mobile md:px-margin-desktop max-w-4xl"
+        >
+          <span
+            class="text-label-sm font-label-sm text-secondary-fixed tracking-[0.3em] uppercase mb-4 block"
+            >Celestial Grace</span
+          >
+          <h1
+            class="text-display-lg font-display-lg text-surface-bright mb-8 leading-tight"
+          >
+            Artistry in Every Strand
+          </h1>
+          <p
+            class="text-body-lg font-body-lg text-surface-bright/90 mb-10 max-w-lg"
+          >
+            Discover the world's most invisible lace and premium raw hair
+            collections, meticulously crafted for the modern visionary.
+          </p>
+          <div class="flex flex-wrap gap-stack-md">
+            <button
+              class="bg-primary text-on-primary px-8 py-4 rounded-lg font-body-md text-body-md font-semibold hover:bg-primary/90 transition-all scale-100 hover:scale-[1.02]"
+            >
+              Shop Lace
+            </button>
+            <button
+              class="border border-surface-bright text-surface-bright px-8 py-4 rounded-lg font-body-md text-body-md font-semibold hover:bg-surface-bright hover:text-primary transition-all scale-100 hover:scale-[1.02]"
+            >
+              Explore Collections
+            </button>
+          </div>
+        </div>
+      </section>
+      <section class="py-section-gap px-margin-mobile md:px-margin-desktop">
+        <div class="flex justify-between items-end mb-stack-lg">
+          <div>
+            <h2 class="text-headline-lg font-headline-lg text-primary">
+              Shop by Category
+            </h2>
+            <div class="h-1 w-24 bg-secondary-fixed-dim mt-2"></div>
+          </div>
+          <button
+            class="text-label-sm font-label-sm text-primary underline underline-offset-4 font-semibold"
+          >
+            View All
+          </button>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-stack-md">
+          <div class="flex flex-col items-center gap-4 group cursor-pointer">
+            <div
+              class="relative aspect-square w-full rounded-full overflow-hidden border border-outline-variant/20 shadow-sm transition-transform duration-500 group-hover:scale-[1.03]"
+            >
+              <img
+                class="w-full h-full object-cover"
+                data-alt="A close-up shot showing high-quality invisible HD lace supply material for luxury wig making. The scene is illuminated with soft, warm lighting to highlight the fine mesh texture against a neutral cream background. The color palette consists of soft beige, pristine white, and subtle golden tones, reflecting an aesthetic of professional craftsmanship and premium luxury. The focus is sharp on the delicate weave of the lace."
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmhceCRde9rLDS9scsRfDf842Nen7_qqqhTpjP1BRNiyvuvAvi9KpEiQenvWpZ28Gy8HXaOPwcYGzrZw_CnqesQ7bKQD_AQYcfo8abwv2UhC0vAIImXi09IymXTd7e5xp5bsLiRtOFVfJ96TPGJJJN3qvKcb5l4I0mhpWGESDWOGCqcXeV_ZOXXYqZ4sl4QUbuxWoiwffD5ARxy9AidWO00_fhzb2CF60BUSul5TmzX9iF0EORQzeWAuGfk8fJLWSdofWQAccPYGKN"
+              />
+            </div>
+            <span
+              class="text-label-sm font-label-sm text-primary uppercase font-bold tracking-widest"
+              >Lace Supply</span
+            >
+          </div>
+          <div class="flex flex-col items-center gap-4 group cursor-pointer">
+            <div
+              class="relative aspect-square w-full rounded-full overflow-hidden border border-outline-variant/20 shadow-sm transition-transform duration-500 group-hover:scale-[1.03]"
+            >
+              <img
+                class="w-full h-full object-cover"
+                data-alt="A professional presentation of a luxury full lace wig with natural-looking waves and high-gloss finish. The wig is placed on a minimalist mannequin head against a soft beige studio background. The lighting is diffused and elegant, creating soft shadows that emphasize the hair's volume and texture. The color palette follows the brand's espresso and gold theme, conveying high-end fashion and artisan quality."
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqWCHz8uD1u-6o3f8g-Urq2aGmlJyX-CkMwD4PdIn6wydMaaZ-8THjO2uDX6X14DbM7OzbzQPG4dwYNeGJYLadlul7VkhVTSvHVt2eFwvYorr0wul53DO-0c8dM7SeSyXeH81iozct_ZLqkhcp5HdmkKDzRkICQ8G3BH4bZuU9GnA8nQiQvJ9e7OrsgnRqDNxghUJ46fa2yFKJ1TyxArstThlj2-IC7ZZHJZ_5nqghRZrXh4gizZzFrPML1uhUKzrhFXeyW2Zjiaud"
+              />
+            </div>
+            <span
+              class="text-label-sm font-label-sm text-primary uppercase font-bold tracking-widest"
+              >Luxury Wigs</span
+            >
+          </div>
+          <div class="flex flex-col items-center gap-4 group cursor-pointer">
+            <div
+              class="relative aspect-square w-full rounded-full overflow-hidden border border-outline-variant/20 shadow-sm transition-transform duration-500 group-hover:scale-[1.03]"
+            >
+              <img
+                class="w-full h-full object-cover"
+                data-alt="High-end professional hair tools including a golden ceramic flat iron and specialized brushes arranged neatly on a marble surface. The lighting is bright and clean, emphasizing the metallic champagne gold accents of the tools. The aesthetic is modern and minimalist, with a professional editorial feel. The image uses a light-mode palette with subtle espresso brown contrasts."
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_J3tgoW_FdI67NgEj9e6UcdqwW2BUcQs1mO3Rmrba_S9JEmuvN3avoByOOuHwW2vegBGRvFYtYeoLpAvQk0ZI-eRITbWJ7qKCveZhHNP5zgLZO7Bgmx_herGdPs5fc2tPf79wao2tiHjTHK7zMpxaTquqwKobJ364PZmitkCBYZvsZAo5dsPFOk9HKXVqEWxsNQ8zQQqKhmofdk-rPUV_5SWNQq5moNWrVKylCCUt0NIg5NtlT1kUSN-P24iMIUBnpT5TzfuqYBRG"
+              />
+            </div>
+            <span
+              class="text-label-sm font-label-sm text-primary uppercase font-bold tracking-widest"
+              >Hair Tools</span
+            >
+          </div>
+          <div class="flex flex-col items-center gap-4 group cursor-pointer">
+            <div
+              class="relative aspect-square w-full rounded-full overflow-hidden border border-outline-variant/20 shadow-sm transition-transform duration-500 group-hover:scale-[1.03]"
+            >
+              <img
+                class="w-full h-full object-cover"
+                data-alt="A curated collection of hair finishing products like serums and sprays in elegant, minimalist packaging. The bottles feature champagne gold caps and clean typography on cream labels. The setting is a soft-lit vanity with a high-key, airy aesthetic. The image conveys a sense of premium hair care and finishing touches in a luxury salon environment."
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCeNkdEMiDQfKdQCr9pHoJEBmlh12Lzww_CyOZimtTN_1mmgUckYUG_XVq5R6Ha2mWrhV_iDFY6_UF1KsDIdKS5fT3cUqYWS5C9HpW2m6e5ZZBCss8aFFlx29-R5zBTtqneDTrEKEajsO_48Hx1BPDAQn3sVbIyYPSOXBB9COEqi42tOleWyXK_hTq2K7jDn3azbGE1rOozBV_q_YZrYd_ds7o2UDu078luFyjhAe6S-QEeUua0B1ZxmDG6RKX1C0in0AjbOawmKqC1"
+              />
+            </div>
+            <span
+              class="text-label-sm font-label-sm text-primary uppercase font-bold tracking-widest"
+              >Finishing</span
+            >
+          </div>
+          <div class="flex flex-col items-center gap-4 group cursor-pointer">
+            <div
+              class="relative aspect-square w-full rounded-full overflow-hidden border border-outline-variant/20 shadow-sm transition-transform duration-500 group-hover:scale-[1.03]"
+            >
+              <img
+                class="w-full h-full object-cover"
+                data-alt="A glimpse into a high-end hair academy classroom where professional stylists are being trained. The environment is modern and clean, with large mirrors and soft white lighting. The focus is on a demonstration of advanced lace installation techniques. The scene feels aspirational, educational, and professional, adhering to the brand's sophisticated and airy editorial style."
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBj2HhSrt_OwFhmBxjlXwVWYBCJoAdDZBiMyyg0Vuh8vYWFKTYyHj8rmEJVllHKPvjGIIeBPpGXMO_Cwa_b6J3eQPiC-ETFfUoZrx7BB9gGtiQYXzLW9-spYlOo7nRBWS5szHpixB4i-2iOnawIfzVUKCHEvYDC74CdzGdLHV8xSv7X_4EAW03RKOKZz4kqACTseZnf44W60-aTkZdnX8YkusYUurY4JZR1Fnsue2mwKJY0eCxPZ-sSRtzFCqJ4RvVG_W1WJM8UR_hd"
+              />
+            </div>
+            <span
+              class="text-label-sm font-label-sm text-primary uppercase font-bold tracking-widest"
+              >Academy</span
+            >
+          </div>
+        </div>
+      </section>
+      <section class="py-section-gap bg-surface-container-low">
+        <div class="px-margin-mobile md:px-margin-desktop">
+          <div class="text-center mb-section-gap/2">
+            <span
+              class="text-label-sm font-label-sm text-secondary tracking-[0.3em] uppercase block mb-4"
+              >Curated Selection</span
+            >
+            <h2 class="text-display-lg font-display-lg text-primary">
+              Best Sellers
+            </h2>
+          </div>
+          <div
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter"
+          >
+            <div class="group">
+              <div
+                class="relative bg-white glass-silk-border rounded-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
+              >
+                <div
+                  class="absolute top-4 left-4 z-10 bg-secondary-fixed text-on-secondary-fixed text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter"
+                >
+                  Best Seller
+                </div>
+                <div class="aspect-[3/4] w-full overflow-hidden">
+                  <img
+                    class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    data-alt="A stunning product photograph of a raw wavy hair bundle with an invisible HD lace frontal. The hair has a natural sheen and deep espresso brown tones. It is presented on a clean, light-filled marble background that highlights the invisibility of the lace edge. The lighting is soft yet detailed, creating an image that feels tactile and ultra-premium. The brand's luxurious and professional aesthetic is maintained throughout."
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBkSG_QP1NOuJCZY3TxGGeM7NOt-vsEiuechOhVk6X8vYtk7wBrhk4v3kK4MD_r0El6LYXJFNJOWKkEI5h-WE2Xvv8KSFBL28NiCYe-2sDDGRCeqzKHH7mHdON03WVuTJFWBubudxSgm53VVLpWCO70R1m2zwlVP8E_OHaUbtgfhfghGs4PmcQp7wQxDZ0OOkkA21ASuahyBN_jI675WmWr4Gjfz3mPyMgmwROWGVmUh0o0MxeQqIDtDeOcJSOTDkiDk9nH5G-X4KU9"
+                  />
+                </div>
+                <div class="p-6">
+                  <h3
+                    class="font-headline-md text-headline-md text-primary mb-2"
+                  >
+                    Raw Invisible HD Frontal
+                  </h3>
+                  <div class="flex items-center gap-2 mb-4">
+                    <div class="flex text-secondary-container">
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                    </div>
+                    <span
+                      class="text-label-sm font-label-sm text-on-surface-variant"
+                      >(124)</span
+                    >
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span
+                      class="font-body-md text-body-lg text-primary font-bold"
+                      >$280.00</span
+                    >
+                    <button
+                      class="bg-primary text-on-primary p-2 rounded-lg hover:bg-primary/80 transition-colors"
+                    >
+                      <span class="material-symbols-outlined"
+                        >add_shopping_cart</span
+                      >
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="group">
+              <div
+                class="relative bg-white glass-silk-border rounded-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
+              >
+                <div
+                  class="absolute top-4 left-4 z-10 bg-secondary-fixed text-on-secondary-fixed text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter"
+                >
+                  New Arrival
+                </div>
+                <div class="aspect-[3/4] w-full overflow-hidden">
+                  <img
+                    class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    data-alt="A luxury bob wig featuring a sleek straight cut and a pre-plucked invisible lace hairline. The hair is a deep, rich black with a high-fashion gloss finish. The setting is a minimalist studio with soft, diffused top lighting that emphasizes the realism of the part. The color palette is composed of pristine whites, subtle greys, and deep espresso tones, reflecting an attainable opulence and high-end professional style."
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuD1ehqwGDXxHvKO_s_W1j8_1noeSxoBpLJ5aEFgBU1pChBf4RYzfP8FBsDhepS5KLUEgfnedUn5hpDvr5lwl3_gCCA7WiikPUhVuSFyKM-iHs8gBAkLDQurLYkH-JZu_BSHN7CoR1QFwuZUcZFLzVqYOznyL1kA2VQHu55JZX_NqF4qghbA6rPnfO_XR1DitX9MJ3WM26HrpKdguF-BfVgux5AR-SOBuoSS4Xz-1Az5rQuu9pRYPSliT6hElb1cY7H3OuqtAm1IG5R9"
+                  />
+                </div>
+                <div class="p-6">
+                  <h3
+                    class="font-headline-md text-headline-md text-primary mb-2"
+                  >
+                    Signature Sleek Bob
+                  </h3>
+                  <div class="flex items-center gap-2 mb-4">
+                    <div class="flex text-secondary-container">
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                    </div>
+                    <span
+                      class="text-label-sm font-label-sm text-on-surface-variant"
+                      >(89)</span
+                    >
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span
+                      class="font-body-md text-body-lg text-primary font-bold"
+                      >$450.00</span
+                    >
+                    <button
+                      class="bg-primary text-on-primary p-2 rounded-lg hover:bg-primary/80 transition-colors"
+                    >
+                      <span class="material-symbols-outlined"
+                        >add_shopping_cart</span
+                      >
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="group">
+              <div
+                class="relative bg-white glass-silk-border rounded-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
+              >
+                <div class="aspect-[3/4] w-full overflow-hidden">
+                  <img
+                    class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    data-alt="A professional hair care serum bottle designed with minimalist luxury in mind. The clear glass bottle contains a golden liquid, featuring a black pump and clean, high-contrast typography. It is placed on a textured cream surface with soft floral shadows playing across the background. The lighting is ethereal and warm, aligning with the brand's soft editorial aesthetic and professional salon-quality feel."
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRRvC22PuBdIGvrxqKhEA9cOYkyB6dGuuvNRMTe4vyoxO5vjgLsPhtzPrironyhmLYqRSSbCpJW2f4IC4uUObVa22o8SPMmSY0jNqqUQEHQbdHxC2P3LMKaLnVpqa9XRPKMGOt5ynbbxov-mX05JdTgeIdpy1lwPEqmZTk8Qy-4szND99GtbRqMz23IUJ1Bnlt_Fdnh60FGtQZ4Q-em6AU3Z3H4Ja-IiNZb5cQsfkroiEMaqyQNZtrAupTdnjI8y_QVW2JtGEX-t0r"
+                  />
+                </div>
+                <div class="p-6">
+                  <h3
+                    class="font-headline-md text-headline-md text-primary mb-2"
+                  >
+                    Silk Finish Glow Oil
+                  </h3>
+                  <div class="flex items-center gap-2 mb-4">
+                    <div class="flex text-secondary-container">
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 0.5"
+                        >star</span
+                      >
+                    </div>
+                    <span
+                      class="text-label-sm font-label-sm text-on-surface-variant"
+                      >(215)</span
+                    >
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span
+                      class="font-body-md text-body-lg text-primary font-bold"
+                      >$42.00</span
+                    >
+                    <button
+                      class="bg-primary text-on-primary p-2 rounded-lg hover:bg-primary/80 transition-colors"
+                    >
+                      <span class="material-symbols-outlined"
+                        >add_shopping_cart</span
+                      >
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="group">
+              <div
+                class="relative bg-white glass-silk-border rounded-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
+              >
+                <div class="aspect-[3/4] w-full overflow-hidden">
+                  <img
+                    class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    data-alt="A luxury lace installation kit featuring premium adhesive, a specialized melting band, and professional combs. The items are arranged in a flat-lay composition on a soft beige silk fabric. The lighting is soft and luxurious, highlighting the metallic gold branding on the black packaging. The overall aesthetic is one of professional expertise and high-end beauty rituals, maintaining a clean and magazine-like look."
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHrUY3yxIIvWbdQFJxmxX1gGUCfZYjARQNTzIbgrZ7CdD9qHQnjuGaTdBToW3U9fIf7GqIarafyjwVfoF1IpAnDW0BSxiZiLyR3s3ez4N-lTNNWynCSnenMG_baA5BBf_ZHJ9I7YG_CRqpTkG1LEbJBWj7LlhG5KTpz45ZKUbvGS0ElL-_7HHhtyMh1kmyuEfkIary1SZgUkGZFMT4OTopuAoxWpY6qmFyDZ5JuHH0kUoeDVaS9kEwX0GA5VHPkMCuYM_cYcugmBSD"
+                  />
+                </div>
+                <div class="p-6">
+                  <h3
+                    class="font-headline-md text-headline-md text-primary mb-2"
+                  >
+                    Pro Installation Kit
+                  </h3>
+                  <div class="flex items-center gap-2 mb-4">
+                    <div class="flex text-secondary-container">
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                      <span
+                        class="material-symbols-outlined text-[16px]"
+                        style="font-variation-settings: 'FILL' 1"
+                        >star</span
+                      >
+                    </div>
+                    <span
+                      class="text-label-sm font-label-sm text-on-surface-variant"
+                      >(67)</span
+                    >
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span
+                      class="font-body-md text-body-lg text-primary font-bold"
+                      >$125.00</span
+                    >
+                    <button
+                      class="bg-primary text-on-primary p-2 rounded-lg hover:bg-primary/80 transition-colors"
+                    >
+                      <span class="material-symbols-outlined"
+                        >add_shopping_cart</span
+                      >
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section
+        class="py-section-gap px-margin-mobile md:px-margin-desktop overflow-hidden"
+      >
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-gutter items-center">
+          <div class="md:col-span-5 mb-10 md:mb-0">
+            <span
+              class="text-label-sm font-label-sm text-secondary tracking-[0.3em] uppercase block mb-4"
+              >Voices of Grace</span
+            >
+            <h2 class="text-display-lg font-display-lg text-primary mb-8">
+              The Deesglim Experience
+            </h2>
+            <div class="bg-surface-container p-10 rounded-xl relative">
+              <span
+                class="material-symbols-outlined text-secondary-container text-6xl absolute -top-4 -left-4 opacity-50"
+                >format_quote</span
+              >
+              <p class="text-body-lg font-body-lg italic text-primary mb-6">
+                "Never have I experienced lace this invisible. It truly melts
+                into the skin. The raw hair quality is unmatched, maintaining
+                its luster even after multiple installs. Deesglim is the only
+                brand I trust for my bridal clients."
+              </p>
+              <div>
+                <p class="font-bold text-primary font-body-md">
+                  Eleanor St. James
+                </p>
+                <p
+                  class="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-widest"
+                >
+                  Celebrity Stylist
+                </p>
+              </div>
+            </div>
+            <div class="flex gap-4 mt-8">
+              <button
+                class="w-12 h-12 rounded-full border border-outline flex items-center justify-center hover:bg-primary hover:text-on-primary transition-all"
+              >
+                <span class="material-symbols-outlined">arrow_back</span>
+              </button>
+              <button
+                class="w-12 h-12 rounded-full border border-outline flex items-center justify-center hover:bg-primary hover:text-on-primary transition-all"
+              >
+                <span class="material-symbols-outlined">arrow_forward</span>
+              </button>
+            </div>
+          </div>
+          <div class="md:col-span-7">
+            <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              <div
+                class="aspect-square relative group overflow-hidden rounded-lg"
+              >
+                <img
+                  class="w-full h-full object-cover grayscale-[30%] hover:grayscale-0 transition-all duration-500 cursor-pointer"
+                  data-alt="A user-generated content photograph from Instagram showing a beautiful woman confidently wearing a Deesglim lace wig. The style is a long, straight unit with a perfect, natural-looking hairline. The lighting is warm and sun-kissed, set in an outdoor urban environment. The image is framed as a social media square post, showing the brand's product in a real-world, high-style setting."
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0Dqn2kpm8tm9nE1M8A9SsgbSnyPvkMGQQsC1mRomtaG5zC8YgUpI4GNfepNTAiBun7nWpKMx1Byr2OotDlz1658tCbkXd-sxDxreLrvOHX9Jc69yZbbdDzu7xfHySZucrvb5zyYh3LHe3r4XTanD6L9Cm-DUcwRAzLIRdsh9lS_iVwjX1FL0uLCx88uOg_NzMpMM8HUKjxOyUqbdzRruXQCkVJvmLfYsvSUOyh5omDx_4etib2g0LF_tl1pNuIGMjG-DrmzB9fw-L"
+                />
+                <div
+                  class="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                >
+                  <span class="material-symbols-outlined text-white"
+                    >favorite</span
+                  >
+                </div>
+              </div>
+              <div
+                class="aspect-square relative group overflow-hidden rounded-lg"
+              >
+                <img
+                  class="w-full h-full object-cover grayscale-[30%] hover:grayscale-0 transition-all duration-500 cursor-pointer"
+                  data-alt="An Instagram-style photo showing a close-up of a flawless lace installation on a client. The lace is completely invisible against the skin. The setting is a chic, modern hair studio with soft ring-lighting. The photograph has a professional, polished finish that highlights the artisan quality of the work. The color palette is composed of soft nudes and deep espresso brown hair tones."
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCB8KNrW8MlZBhkXpmBkl1BgrlNdpBub_15WJpHUSTTFHNMIUn8owyPKUDiFCxdavxAHAy_SvBNwvkspQ236hOFIi_RsqNvpnz2BbLJj-fgBaPJ8gmuNtt4PSa8w0ywnyNvGsj5qo3ABC2O4Am5nWQ3331lXfJMc1ddB-yX3LSSFiOUMwPu1TedbzjPytGvpGCvvsnyVlj9Hy78qtsdAcrj_kt9H7z_ggqkqneUkgzQHbHTTluDz3_vpjSf1WUyohtOCmWh3XTJHNiC"
+                />
+                <div
+                  class="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                >
+                  <span class="material-symbols-outlined text-white"
+                    >favorite</span
+                  >
+                </div>
+              </div>
+              <div
+                class="aspect-square relative group overflow-hidden rounded-lg"
+              >
+                <img
+                  class="w-full h-full object-cover grayscale-[30%] hover:grayscale-0 transition-all duration-500 cursor-pointer"
+                  data-alt="Social proof image showing a luxury shopping haul with branded Deesglim packaging. Multiple elegant black and gold boxes are arranged on a white silk duvet. The lighting is soft and airy, creating a high-end, aspirational atmosphere. The image feels authentic yet curated, perfect for an editorial social gallery. The primary colors are gold, black, and creamy white."
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNghY6nCpX8SnTlqqBAHuO_riXeYfrZujIBDwLIuhH5e9VH_2Vt5Gc-ik9Y2W4_DE6ecjq5Blrsa0xhy-Ft5plLonDD9j-JrzVZ7xJdwxRWTDGAS6i-eLoein2sTcTaZDDTF9lcR201KI-s-8qQeBlO2of40MA5d2FTtENy3ZdoLPJ5UOyHK18-AmIG_d7ulgN04i51_5V6UlhK57TTxmGwykLb8Vi_StcEWNM8EzXJIR5CijY41RxlXXj_BXMSdtGd3AT5XsUnQ-N"
+                />
+                <div
+                  class="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                >
+                  <span class="material-symbols-outlined text-white"
+                    >favorite</span
+                  >
+                </div>
+              </div>
+              <div
+                class="aspect-square relative group overflow-hidden rounded-lg hidden lg:block"
+              >
+                <img
+                  class="w-full h-full object-cover grayscale-[30%] hover:grayscale-0 transition-all duration-500 cursor-pointer"
+                  data-alt="A candid-style editorial photo of a woman flipping her long, voluminous Deesglim hair extensions. The motion is captured with a slight blur to create a dynamic and energetic feel. The lighting is high-key and bright, set in a minimalist white studio. The overall mood is joyful and luxurious, highlighting the natural movement and quality of the premium hair."
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCU1n3kZlTWxvd8KrU61scAN0TzV32I5pibYVaHO4FtG7qSbu1CZrTDQibooVi15jozo5V2suKe5530L2fbY5Qc0cbKGEWIF66iEIdUqkce9lxZKubUQ8oKE1CIBX2xIsa2AB61o1jD44_gjmLT_v-D4T4hBR-Bf5YO3JOEctxKwABMPSuwi_Mt1yTNiMTTiUzGMZ1FbPFZeUOIDg2iAC6RCcnIpEl4LxkxkcmzeHvbzHSXBETMYuFnfUdybjTL4Pp3Puklnnksw5Tf"
+                />
+                <div
+                  class="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                >
+                  <span class="material-symbols-outlined text-white"
+                    >favorite</span
+                  >
+                </div>
+              </div>
+              <div
+                class="aspect-square relative group overflow-hidden rounded-lg hidden lg:block"
+              >
+                <img
+                  class="w-full h-full object-cover grayscale-[30%] hover:grayscale-0 transition-all duration-500 cursor-pointer"
+                  data-alt="A high-fashion portrait of a woman wearing a custom-colored burgundy wig. The styling is edgy yet sophisticated, with the hair having a soft, healthy shine. The lighting uses warm golden tones to complement the hair color. The setting is a minimalist gallery space, reinforcing the brand's artistic and luxury positioning."
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDUgiDAplQQJXewCaTonshZectHm5SUnMxAALqolxy7YrDfnh6H0HI4ZhUdkh-IlTBXYRo14TUz_ew-lpcMe1sKe689ZJPGFuefB3tdQxou-qE03TI8jJE4IydoNUZDVKIbN1D7QntSIZQEGnl_lFml8L3_OjyF7kendPVs85ySpPK57oBInro8Sa8kiwJHnqKI13W0V0_SHrHrVtYDIFYkRydE3LplCtqZ0Ib9rLcdgzfhKABIpAm1zFqQo-iUVO0EG6s8GIenxLf"
+                />
+                <div
+                  class="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                >
+                  <span class="material-symbols-outlined text-white"
+                    >favorite</span
+                  >
+                </div>
+              </div>
+              <div
+                class="aspect-square relative group overflow-hidden rounded-lg hidden lg:block"
+              >
+                <img
+                  class="w-full h-full object-cover grayscale-[30%] hover:grayscale-0 transition-all duration-500 cursor-pointer"
+                  data-alt="An up-close shot of a stylist's hand applying silk finish serum to long, dark hair. The focus is on the droplet of golden oil and the healthy sheen of the hair. The background is softly out of focus, showing a glimpse of a luxury salon interior. The lighting is elegant and emphasizes the product's quality and the brand's professional artistry."
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDB691MX9pT4Sk8zPPfEQSstF7El0LO9QHJB6HE696oV2f9LArA1A2iE3zsg0tmAnlioftZ7X8cXciAHxILf_p3_IMXojW-XXiyS0DZSqgIHxnwQliRaXxq2q_wubLdhqXPzfmBA1w1LWalwqTGAx4sYsRfOG-ykTSKRDg7E-EoNR0zWZd-Nx0of5FiIDfn3JQpOnJX5paoJKu1P-nAU1jlOk-7MddcVL6nTFZD9sfhLLl83TuMQSS4V8fIsQ3wRbp2V7xm49U2LnxC"
+                />
+                <div
+                  class="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                >
+                  <span class="material-symbols-outlined text-white"
+                    >favorite</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer
+      class="w-full pt-section-gap pb-stack-lg px-margin-mobile md:px-margin-desktop grid grid-cols-1 md:grid-cols-12 gap-gutter bg-surface-container border-t border-outline-variant"
+    >
+      <div class="md:col-span-5">
+        <span
+          class="text-display-lg font-display-lg text-primary opacity-20 block mb-8"
+          >DEESGLIM</span
+        >
+        <p
+          class="text-body-md font-body-md text-on-surface-variant max-w-sm mb-8"
+        >
+          Elevating the standards of hair artistry with celestial-grade
+          materials and professional-led education. Crafted for those who seek
+          the extraordinary.
+        </p>
+        <div class="flex gap-4">
+          <a
+            class="w-10 h-10 flex items-center justify-center bg-primary text-on-primary rounded-full hover:opacity-80 transition-opacity"
+            href="#"
+          >
+            <span class="material-symbols-outlined">share</span>
+          </a>
+          <a
+            class="w-10 h-10 flex items-center justify-center bg-primary text-on-primary rounded-full hover:opacity-80 transition-opacity"
+            href="#"
+          >
+            <span class="material-symbols-outlined">play_circle</span>
+          </a>
+          <a
+            class="w-10 h-10 flex items-center justify-center bg-primary text-on-primary rounded-full hover:opacity-80 transition-opacity"
+            href="#"
+          >
+            <span class="material-symbols-outlined">camera</span>
+          </a>
+        </div>
+      </div>
+      <div class="md:col-span-2">
+        <h4
+          class="text-label-sm font-label-sm text-primary uppercase font-bold tracking-widest mb-6"
+        >
+          Explore
+        </h4>
+        <ul class="flex flex-col gap-4">
+          <li>
+            <a
+              class="text-on-surface-variant hover:text-secondary transition-colors"
+              href="#"
+              >Shop All</a
+            >
+          </li>
+          <li>
+            <a
+              class="text-on-surface-variant hover:text-secondary transition-colors"
+              href="#"
+              >Lace Guide</a
+            >
+          </li>
+          <li>
+            <a
+              class="text-on-surface-variant hover:text-secondary transition-colors"
+              href="#"
+              >Collections</a
+            >
+          </li>
+          <li>
+            <a
+              class="text-on-surface-variant hover:text-secondary transition-colors"
+              href="#"
+              >Atelier</a
+            >
+          </li>
+        </ul>
+      </div>
+      <div class="md:col-span-2">
+        <h4
+          class="text-label-sm font-label-sm text-primary uppercase font-bold tracking-widest mb-6"
+        >
+          Concierge
+        </h4>
+        <ul class="flex flex-col gap-4">
+          <li>
+            <a
+              class="text-on-surface-variant hover:text-secondary transition-colors"
+              href="#"
+              >Sustainability</a
+            >
+          </li>
+          <li>
+            <a
+              class="text-on-surface-variant hover:text-secondary transition-colors"
+              href="#"
+              >Lace Care</a
+            >
+          </li>
+          <li>
+            <a
+              class="text-on-surface-variant hover:text-secondary transition-colors"
+              href="#"
+              >Shipping</a
+            >
+          </li>
+          <li>
+            <a
+              class="text-on-surface-variant hover:text-secondary transition-colors"
+              href="#"
+              >Privacy</a
+            >
+          </li>
+          <li>
+            <a
+              class="text-on-surface-variant hover:text-secondary transition-colors"
+              href="#"
+              >Contact</a
+            >
+          </li>
+        </ul>
+      </div>
+      <div class="md:col-span-3">
+        <h4
+          class="text-label-sm font-label-sm text-primary uppercase font-bold tracking-widest mb-6"
+        >
+          Join The Circle
+        </h4>
+        <p class="text-body-md font-body-md text-on-surface-variant mb-6">
+          Receive exclusive access to new drops and styling secrets.
+        </p>
+        <div class="flex">
+          <input
+            class="bg-surface text-label-sm font-label-sm px-4 py-3 rounded-l-lg border-y border-l border-outline-variant focus:ring-1 focus:ring-secondary-container focus:outline-none w-full"
+            placeholder="Your email address"
+            type="email"
+          />
+          <button
+            class="bg-primary text-on-primary px-6 py-3 rounded-r-lg font-label-sm font-label-sm uppercase tracking-widest"
+          >
+            Join
+          </button>
+        </div>
+      </div>
+      <div
+        class="md:col-span-12 mt-section-gap/2 pt-8 border-t border-outline-variant/30 flex flex-col md:flex-row justify-between items-center gap-4"
+      >
+        <span class="text-label-sm font-label-sm text-on-surface-variant"
+          >© 2024 DEESGLIM LUXURY. CRAFTED FOR CELESTIAL GRACE.</span
+        >
+        <div class="flex gap-6">
+          <span class="material-symbols-outlined text-primary/40 text-[20px]"
+            >payments</span
+          >
+          <span class="material-symbols-outlined text-primary/40 text-[20px]"
+            >credit_card</span
+          >
+          <span class="material-symbols-outlined text-primary/40 text-[20px]"
+            >account_balance_wallet</span
+          >
+        </div>
+      </div>
+    </footer>
+    <nav
+      class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 md:hidden bg-surface/80 backdrop-blur-lg border-t border-white/30 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] rounded-t-xl"
+    >
+      <a
+        class="flex flex-col items-center justify-center text-primary bg-secondary-container/40 rounded-full px-4 py-1 scale-90 transition-all"
+        href="#"
+      >
+        <span
+          class="material-symbols-outlined"
+          style="font-variation-settings: 'FILL' 1"
+          >auto_awesome</span
+        >
+        <span class="text-label-sm font-label-sm mt-1">Explore</span>
+      </a>
+      <a
+        class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-all"
+        href="#"
+      >
+        <span class="material-symbols-outlined">grid_view</span>
+        <span class="text-label-sm font-label-sm mt-1">Shop</span>
+      </a>
+      <a
+        class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-all"
+        href="#"
+      >
+        <span class="material-symbols-outlined">favorite</span>
+        <span class="text-label-sm font-label-sm mt-1">Wishlist</span>
+      </a>
+      <a
+        class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-all"
+        href="#"
+      >
+        <span class="material-symbols-outlined">person</span>
+        <span class="text-label-sm font-label-sm mt-1">Account</span>
+      </a>
+    </nav>
+    <div class="fixed bottom-24 right-6 z-40 md:bottom-12 md:right-12">
+      <button
+        class="w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+      >
+        <span class="material-symbols-outlined text-[28px]">chat_bubble</span>
+      </button>
+    </div>
+  </body>
+</html>
