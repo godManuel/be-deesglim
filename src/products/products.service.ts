@@ -249,6 +249,9 @@ export class ProductsService {
     updateProductDto: UpdateProductDto,
     imageFiles: UploadedProductImageFile[] = [],
   ): Promise<Product> {
+    // ---------------------------------------------------------------
+    // 1. Find active product
+    // ---------------------------------------------------------------
     const product = await this.productModel.findOne({
       _id: productId,
       isDeleted: false,
@@ -258,6 +261,9 @@ export class ProductsService {
       throw new BadRequestException('Product not found.');
     }
 
+    // ---------------------------------------------------------------
+    // 2. Validate category if category is being updated
+    // ---------------------------------------------------------------
     let categoryId = product.category;
 
     if (updateProductDto.category) {
@@ -277,6 +283,9 @@ export class ProductsService {
       categoryId = category._id;
     }
 
+    // ---------------------------------------------------------------
+    // 3. Generate unique slug if name or slug changes
+    // ---------------------------------------------------------------
     let slug = product.slug;
 
     if (updateProductDto.name || updateProductDto.slug) {
@@ -289,9 +298,16 @@ export class ProductsService {
       );
     }
 
-    let variantIds = product.variants;
+    // ---------------------------------------------------------------
+    // 4. Handle variants
+    // ---------------------------------------------------------------
+    let variantIds = product.variants ?? [];
 
     if (updateProductDto.variants !== undefined) {
+      // Get old variant IDs
+      const oldVariantIds = product.variants ?? [];
+
+      // Create new variants
       const variants = await this.variantModel.insertMany(
         updateProductDto.variants.map((variant: CreateProductVariantDto) => ({
           ...variant,
@@ -300,11 +316,25 @@ export class ProductsService {
       );
 
       variantIds = variants.map((variant) => variant._id);
+
+      // Delete old variants
+      if (oldVariantIds.length > 0) {
+        await this.variantModel.deleteMany({
+          _id: { $in: oldVariantIds },
+        });
+      }
     }
 
+    // ---------------------------------------------------------------
+    // 5. Handle images
+    // ---------------------------------------------------------------
     let imageIds: Types.ObjectId[] = product.images ?? [];
 
     if (updateProductDto.images !== undefined) {
+      // Get old image IDs
+      const oldImageIds = product.images ?? [];
+
+      // Create new image documents
       const images = await this.imageModel.insertMany(
         updateProductDto.images.map((image: CreateProductImageDto) => ({
           ...image,
@@ -313,8 +343,14 @@ export class ProductsService {
       );
 
       imageIds = images.map((image) => image._id);
-    }
 
+      // Delete old image documents
+      if (oldImageIds.length > 0) {
+        await this.imageModel.deleteMany({
+          _id: { $in: oldImageIds },
+        });
+      }
+    }
     if (imageFiles.length > 0) {
       const uploadedImages = await Promise.all(
         imageFiles.map((file, index) =>
@@ -333,16 +369,45 @@ export class ProductsService {
       imageIds.push(...cloudinaryImages.map((image) => image._id));
     }
 
+    // ---------------------------------------------------------------
+    // 7. Update product fields
+    // ---------------------------------------------------------------
     product.name = updateProductDto.name ?? product.name;
+
     product.slug = slug;
+
     product.description = updateProductDto.description ?? product.description;
+
     product.color = updateProductDto.color ?? product.color;
+
+    product.price = updateProductDto.price ?? product.price;
+
+    product.quantity = updateProductDto.quantity ?? product.quantity;
+
     product.isVisible = updateProductDto.isVisible ?? product.isVisible;
+
     product.isFeatured = updateProductDto.isFeatured ?? product.isFeatured;
+
     product.category = categoryId;
+
     product.variants = variantIds;
+
     product.images = imageIds;
 
+    product.whyChoose = updateProductDto.whyChoose ?? product.whyChoose;
+
+    product.whyNotChoose =
+      updateProductDto.whyNotChoose ?? product.whyNotChoose;
+
+    product.sizeGuidePdfUrl =
+      updateProductDto.sizeGuidePdfUrl ?? product.sizeGuidePdfUrl;
+
+    product.skinToneGuidePdfUrl =
+      updateProductDto.skinToneGuidePdfUrl ?? product.skinToneGuidePdfUrl;
+
+    // ---------------------------------------------------------------
+    // 8. Save updated product
+    // ---------------------------------------------------------------
     return product.save();
   }
 

@@ -52,6 +52,7 @@ export class CartService {
     productId: string,
     variantId: string | undefined,
     quantity: number,
+    color: string,
   ): Promise<CartDocument> {
     if (quantity <= 0) {
       throw new BadRequestException('Quantity must be greater than zero');
@@ -114,11 +115,13 @@ export class CartService {
 
     if (item) {
       item.quantity += quantity;
+      item.color = color;
     } else {
       cart.items.push({
         product: productObjectId,
         variant: variantId ? new Types.ObjectId(variantId) : undefined,
         quantity,
+        color,
       } as CartItem);
     }
 
@@ -131,6 +134,7 @@ export class CartService {
     userId: string,
     itemId: string,
     quantity: number,
+    color: string,
   ): Promise<CartDocument> {
     if (quantity <= 0) {
       throw new BadRequestException('Quantity must be greater than zero');
@@ -179,6 +183,7 @@ export class CartService {
     }
 
     item.quantity = quantity;
+    item.color = color;
 
     await cart.save();
 

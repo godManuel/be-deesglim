@@ -15,6 +15,9 @@ export class CartItem {
 
   @Prop({ type: Types.ObjectId, ref: ProductVariant.name })
   variant?: Types.ObjectId;
+
+  @Prop({ required: true })
+  color: string;
 }
 
 export const CartItemSchema = SchemaFactory.createForClass(CartItem);

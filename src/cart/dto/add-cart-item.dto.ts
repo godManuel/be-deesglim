@@ -18,4 +18,8 @@ export class AddCartItemDto {
   @IsString()
   @IsOptional()
   variantId?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  color: string;
 }
