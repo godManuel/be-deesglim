@@ -112,6 +112,7 @@ export class AuthService {
         role: user.role,
         emailVerified: user.emailVerified,
         authProvider: user.authProvider,
+        shippingDetails: user.shippingDetails || null,
       },
     };
   }

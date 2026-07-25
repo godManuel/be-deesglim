@@ -66,11 +66,17 @@ export class UsersService {
   }
 
   public async findByEmail(email: string) {
-    return this.usersModel.findOne({ email }).exec();
+    return this.usersModel
+      .findOne({ email })
+      .populate('shippingDetails')
+      .exec();
   }
 
   public async findById(id: string) {
-    const user = await this.usersModel.findById(id).exec();
+    const user = await this.usersModel
+      .findById(id)
+      .populate('shippingDetails')
+      .exec();
     if (!user) throw new NotFoundException('User not found');
     return user;
   }

@@ -62,6 +62,7 @@ export class OrdersService {
       userId,
       payload,
     );
+
     const paystackSecret = this.configService.get<string>(
       'PAYSTACK_SECRET_KEY',
     );
@@ -73,8 +74,12 @@ export class OrdersService {
     }
 
     const reference = this.generatePaystackReference(userId);
+
     const callbackUrl = this.configService.get<string>('PAYSTACK_CALLBACK_URL');
 
+    // ---------------------------------------------------------
+    // 1. Initialize Paystack payment
+    // ---------------------------------------------------------
     const initializeResponse = await fetch(
       'https://api.paystack.co/transaction/initialize',
       {
@@ -97,6 +102,7 @@ export class OrdersService {
     );
 
     const initializeJson = (await initializeResponse.json()) as any;
+
     if (!initializeResponse.ok || !initializeJson?.status) {
       throw new BadRequestException(
         initializeJson?.message ??
@@ -104,23 +110,47 @@ export class OrdersService {
       );
     }
 
-    const user = await this.userModel.findById(userId).exec();
+    // ---------------------------------------------------------
+    // 2. Get user and populate saved shipping details
+    // ---------------------------------------------------------
+    const user = await this.userModel
+      .findById(userId)
+      .populate('shippingDetails')
+      .exec();
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    if (!user.shippingDetails) {
-      const shippingDetails = await this.shippingDetailsModel.create({
+    // ---------------------------------------------------------
+    // 3. Determine shipping details to use
+    // ---------------------------------------------------------
+    let shippingDetails;
+
+    if (user.shippingDetails) {
+      // User already has saved shipping details.
+      // Use the existing saved shipping details.
+      shippingDetails = user.shippingDetails;
+    } else {
+      // User doesn't have saved shipping details yet.
+      // Create them from the checkout data.
+      const newShippingDetails = await this.shippingDetailsModel.create({
         userId: new Types.ObjectId(userId),
         ...checkoutData.shippingAddress,
       });
 
-      user.shippingDetails = shippingDetails._id;
+      // Save the ShippingDetails document ID to the user
+      user.shippingDetails = newShippingDetails._id;
 
       await user.save();
+
+      // Use the newly created shipping details
+      shippingDetails = newShippingDetails;
     }
 
+    // ---------------------------------------------------------
+    // 4. Create payment transaction
+    // ---------------------------------------------------------
     const transaction = new this.paymentTxModel({
       userId: new Types.ObjectId(userId),
       reference,
@@ -132,12 +162,13 @@ export class OrdersService {
       shippingTotal: checkoutData.shippingTotal,
       discountTotal: checkoutData.discountTotal,
       total: checkoutData.total,
-      shippingAddress: checkoutData.shippingAddress,
+      shippingAddress: shippingDetails,
       items: checkoutData.items,
       paystackAccessCode: initializeJson.data?.access_code,
       paystackAuthorizationUrl: initializeJson.data?.authorization_url,
       paystackStatus: initializeJson.data?.status ?? 'initialized',
     });
+
     await transaction.save();
 
     return {
@@ -325,6 +356,7 @@ export class OrdersService {
     return this.orderModel
       .find({ userId: new Types.ObjectId(userId) })
       .populate('items.images')
+      .populate('shippingAddress')
       .exec();
   }
 
@@ -335,6 +367,7 @@ export class OrdersService {
         userId: new Types.ObjectId(userId),
       })
       .populate('items.images')
+      .populate('shippingAddress')
       .exec();
     if (!order) {
       throw new NotFoundException('Order not found');
