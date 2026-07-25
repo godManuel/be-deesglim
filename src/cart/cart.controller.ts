@@ -45,7 +45,6 @@ export class CartController {
       request.user.id,
       itemId,
       updateCartItemDto.quantity,
-      updateCartItemDto.color,
     );
   }
 

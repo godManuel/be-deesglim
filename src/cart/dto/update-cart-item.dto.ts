@@ -4,7 +4,4 @@ export class UpdateCartItemDto {
   @IsInt()
   @IsPositive()
   quantity: number;
-
-  @IsString()
-  color: string;
 }
