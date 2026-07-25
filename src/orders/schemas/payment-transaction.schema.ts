@@ -41,6 +41,9 @@ export class CheckoutItemSnapshot {
 
   @Prop({ required: true })
   quantity: number;
+
+  @Prop({ type: [String] })
+  images: string[];
 }
 
 export const CheckoutItemSnapshotSchema =

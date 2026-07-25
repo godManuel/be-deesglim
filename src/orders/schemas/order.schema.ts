@@ -31,6 +31,9 @@ export class OrderItem {
 
   @Prop({ required: true, min: 1 })
   quantity: number;
+
+  @Prop({ type: [String] })
+  images: string[];
 }
 
 export const OrderItemSchema = SchemaFactory.createForClass(OrderItem);

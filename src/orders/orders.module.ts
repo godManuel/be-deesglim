@@ -13,6 +13,11 @@ import {
   PaymentTransaction,
   PaymentTransactionSchema,
 } from './schemas/payment-transaction.schema';
+import { User, UserSchema } from 'src/users/schemas/user.schema';
+import {
+  ShippingDetails,
+  ShippingDetailsSchema,
+} from './schemas/shipping.schema';
 
 @Module({
   imports: [
@@ -22,6 +27,8 @@ import {
       { name: ProductVariant.name, schema: ProductVariantSchema },
       { name: Product.name, schema: ProductSchema },
       { name: PaymentTransaction.name, schema: PaymentTransactionSchema },
+      { name: User.name, schema: UserSchema },
+      { name: ShippingDetails.name, schema: ShippingDetailsSchema },
     ]),
   ],
   controllers: [OrdersController],

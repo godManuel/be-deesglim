@@ -28,6 +28,11 @@ import {
   ProductVariantDocument,
 } from '../products/schemas/product-variant.schema';
 import { Product, ProductDocument } from 'src/products/schemas/product.schema';
+import { User, UserDocument } from 'src/users/schemas/user.schema';
+import {
+  ShippingDetails,
+  ShippingDetailsDocument,
+} from './schemas/shipping.schema';
 
 @Injectable()
 export class OrdersService {
@@ -36,6 +41,9 @@ export class OrdersService {
     private readonly connection: Connection,
     @InjectModel(Order.name) private readonly orderModel: Model<OrderDocument>,
     @InjectModel(Cart.name) private readonly cartModel: Model<CartDocument>,
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    @InjectModel(ShippingDetails.name)
+    private readonly shippingDetailsModel: Model<ShippingDetailsDocument>,
     @InjectModel(Product.name)
     private readonly productModel: Model<ProductDocument>,
     @InjectModel(ProductVariant.name)
@@ -94,6 +102,23 @@ export class OrdersService {
         initializeJson?.message ??
           'Unable to initialize payment with Paystack.',
       );
+    }
+
+    const user = await this.userModel.findById(userId).exec();
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!user.shippingDetails) {
+      const shippingDetails = await this.shippingDetailsModel.create({
+        userId: new Types.ObjectId(userId),
+        ...checkoutData.shippingAddress,
+      });
+
+      user.shippingDetails = shippingDetails._id;
+
+      await user.save();
     }
 
     const transaction = new this.paymentTxModel({
@@ -265,14 +290,23 @@ export class OrdersService {
       paidOrders,
       processingOrders,
       cancelledOrders,
+      orders,
     ] = await Promise.all([
       this.orderModel.countDocuments().exec(),
+
       this.orderModel.countDocuments({ status: OrderStatus.DELIVERED }).exec(),
+
       this.orderModel.countDocuments({ status: OrderStatus.SHIPPED }).exec(),
+
       this.orderModel.countDocuments({ status: OrderStatus.PENDING }).exec(),
+
       this.orderModel.countDocuments({ status: OrderStatus.PAID }).exec(),
+
       this.orderModel.countDocuments({ status: OrderStatus.PROCESSING }).exec(),
+
       this.orderModel.countDocuments({ status: OrderStatus.CANCELLED }).exec(),
+
+      this.orderModel.find().populate('userId').sort({ createdAt: -1 }).exec(),
     ]);
 
     return {
@@ -283,11 +317,15 @@ export class OrdersService {
       paidOrders,
       processingOrders,
       cancelledOrders,
+      orders,
     };
   }
 
   async findForUser(userId: string): Promise<Order[]> {
-    return this.orderModel.find({ userId: new Types.ObjectId(userId) }).exec();
+    return this.orderModel
+      .find({ userId: new Types.ObjectId(userId) })
+      .populate('items.images')
+      .exec();
   }
 
   async findById(userId: string, orderId: string): Promise<Order> {
@@ -296,6 +334,7 @@ export class OrdersService {
         _id: new Types.ObjectId(orderId),
         userId: new Types.ObjectId(userId),
       })
+      .populate('items.images')
       .exec();
     if (!order) {
       throw new NotFoundException('Order not found');
@@ -480,7 +519,12 @@ export class OrdersService {
   ) {
     const cart = await this.cartModel
       .findOne({ userId: new Types.ObjectId(userId), status: 'ACTIVE' })
-      .populate('items.product')
+      .populate({
+        path: 'items.product',
+        populate: {
+          path: 'images',
+        },
+      })
       .populate('items.variant')
       .exec();
 
@@ -550,6 +594,7 @@ export class OrdersService {
         name: product.name,
         price,
         quantity: Number(cartItem.quantity),
+        images: (product.images ?? []).map((image: any) => image.url),
       };
     });
 
