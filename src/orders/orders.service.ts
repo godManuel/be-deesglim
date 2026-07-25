@@ -305,7 +305,7 @@ export class OrdersService {
   }
 
   async findAll(): Promise<Order[]> {
-    return this.orderModel.find().exec();
+    return this.orderModel.find().populate('userId').exec();
   }
 
   async findAdminOrders(query: ListOrdersQueryDto) {
@@ -524,6 +524,7 @@ export class OrdersService {
     const [data, total] = await Promise.all([
       this.orderModel
         .find(filter)
+        .populate('userId')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
