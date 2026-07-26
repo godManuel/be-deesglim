@@ -1,20 +1,18 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { ColorType } from '../enums/color-type.enum';
 
 import { Category } from './category.schema';
 import { ProductImage } from './product-image.schema';
 import { ProductVariant } from './product-variant.schema';
 
 import { ProductColor, ProductColorSchema } from './product-color.schema';
+import { Tags } from '../enums/product-tags.enum';
 
 export type ProductDocument = Product & Document;
 
 // Lace Supply is the only category with a restricted color palette.
-
-export enum Tags {
-  BEST_SELLER = 'Best Seller',
-}
 
 @Schema({ timestamps: true })
 export class Product {
@@ -45,11 +43,11 @@ export class Product {
       'Available lace colors and the quantity available for each color.',
     example: [
       {
-        colorType: 'Brown',
+        colorType: ColorType.BROWN,
         colorQuantity: 10,
       },
       {
-        colorType: 'Transparent',
+        colorType: ColorType.TRANSPARENT,
         colorQuantity: 5,
       },
     ],
@@ -78,7 +76,7 @@ export class Product {
   importantNote?: string;
 
   @Prop({ type: [String], enum: Tags })
-  tags?: string[];
+  tags?: Tags[];
 
   @ApiProperty({
     example: false,

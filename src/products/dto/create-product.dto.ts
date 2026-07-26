@@ -8,11 +8,13 @@ import {
   ValidateNested,
   IsNumber,
   IsString,
+  IsEnum,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { CreateProductVariantDto } from './create-product-variant.dto';
 import { CreateProductImageDto } from './create-product-image.dto';
 import { CreateProductColorDto } from './create-product-color.dto';
+import { Tags } from '../enums/product-tags.enum';
 
 export class CreateProductDto {
   @ApiProperty({
@@ -122,7 +124,9 @@ export class CreateProductDto {
   importantNote?: string;
 
   @ApiPropertyOptional({
-    example: ['Best-seller', 'Offers'],
+    example: [Tags.BEST_SELLER],
+    enum: Tags,
+    isArray: true,
     description: 'Tags for the product',
   })
   @IsOptional()
@@ -138,8 +142,8 @@ export class CreateProductDto {
     return value;
   })
   @IsArray()
-  @IsString({ each: true })
-  tags?: string[];
+  @IsEnum(Tags, { each: true })
+  tags?: Tags[];
 
   @ApiPropertyOptional({
     example: 'library',

@@ -131,6 +131,8 @@ export class ProductsService {
       isVisible: createProductDto.isVisible ?? true,
       isFeatured: createProductDto.isFeatured ?? false,
       category: category._id,
+      importantNote: createProductDto.importantNote,
+      tags: createProductDto.tags,
       variants: variantIds,
       images: imageIds,
       whyChoose: createProductDto.whyChoose,
