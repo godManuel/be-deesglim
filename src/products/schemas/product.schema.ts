@@ -6,12 +6,14 @@ import { Category } from './category.schema';
 import { ProductImage } from './product-image.schema';
 import { ProductVariant } from './product-variant.schema';
 
+import { ProductColor, ProductColorSchema } from './product-color.schema';
+
 export type ProductDocument = Product & Document;
 
 // Lace Supply is the only category with a restricted color palette.
-export enum Color {
-  TRANSPARENT = 'Transparent',
-  BROWN = 'Brown',
+
+export enum Tags {
+  BEST_SELLER = 'Best Seller',
 }
 
 @Schema({ timestamps: true })
@@ -38,15 +40,25 @@ export class Product {
   description: string;
 
   @ApiPropertyOptional({
-    example: 'Natural Black',
+    type: [ProductColor],
     description:
-      'Product-level color. Used by Lace Supply (restricted to Transparent/Brown — see LaceColor) and Ready to Ship Wigs (free text). Closures/Frontals tracks color per variant instead — see ProductVariant.color. Not used by Custom Wigs.',
+      'Available lace colors and the quantity available for each color.',
+    example: [
+      {
+        colorType: 'Brown',
+        colorQuantity: 10,
+      },
+      {
+        colorType: 'Transparent',
+        colorQuantity: 5,
+      },
+    ],
   })
   @Prop({
-    type: [String],
-    enum: Color,
+    type: [ProductColorSchema],
+    default: [],
   })
-  color?: string[];
+  color?: ProductColor[];
 
   @ApiPropertyOptional({
     example: 'Luxury hair extension for styling and volume.',
@@ -61,6 +73,12 @@ export class Product {
   })
   @Prop({ default: true })
   isVisible: boolean;
+
+  @Prop()
+  importantNote?: string;
+
+  @Prop({ type: [String], enum: Tags })
+  tags?: string[];
 
   @ApiProperty({
     example: false,

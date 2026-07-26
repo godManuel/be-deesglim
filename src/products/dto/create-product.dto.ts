@@ -11,6 +11,7 @@ import {
 import { Transform, Type } from 'class-transformer';
 import { CreateProductVariantDto } from './create-product-variant.dto';
 import { CreateProductImageDto } from './create-product-image.dto';
+import { CreateProductColorDto } from './create-product-color.dto';
 
 export class CreateProductDto {
   @ApiProperty({
@@ -48,10 +49,9 @@ export class CreateProductDto {
   quantity?: number;
 
   @ApiPropertyOptional({
-    example: ['BROWN', 'TRANSPARENT'],
+    type: [CreateProductColorDto],
     description:
       'Product colors. Required for Closures/Frontals and Custom Wigs.',
-    type: [String],
   })
   @IsOptional()
   @Transform(({ value }) => {
@@ -67,7 +67,7 @@ export class CreateProductDto {
   })
   @IsArray()
   @IsString({ each: true })
-  color?: string[];
+  color?: CreateProductColorDto[];
 
   @ApiPropertyOptional({
     example: 'This is the full product description.',
@@ -102,6 +102,34 @@ export class CreateProductDto {
   })
   @IsBoolean()
   isFeatured?: boolean;
+
+  @ApiPropertyOptional({
+    example: 'This is an important note for the product.',
+    description: 'Important note for the product',
+  })
+  @IsOptional()
+  @IsString()
+  importantNote?: string;
+
+  @ApiPropertyOptional({
+    example: ['Best-seller', 'Offers'],
+    description: 'Tags for the product',
+  })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    }
+
+    return value;
+  })
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
 
   @ApiPropertyOptional({
     example: 'library',
