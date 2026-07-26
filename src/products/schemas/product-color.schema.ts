@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { ColorType } from '../dto/create-product-color.dto';
+import { ColorType } from '../enums/color-type.enum';
 
 @Schema({ _id: false })
 export class ProductColor {

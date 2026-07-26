@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ColorType } from '../enums/color-type.enum';
 import {
   IsNotEmpty,
   IsOptional,
@@ -50,21 +51,29 @@ export class CreateProductDto {
 
   @ApiPropertyOptional({
     type: [CreateProductColorDto],
-    description:
-      'Product colors. Required for Closures/Frontals and Custom Wigs.',
+    description: 'Product colors and available quantity for each color.',
+    example: [
+      {
+        colorType: 'BROWN',
+        colorQuantity: 1,
+      },
+    ],
   })
   @IsOptional()
-  @Transform(({ value }) => {
-    if (typeof value === 'string') {
-      try {
-        return JSON.parse(value);
-      } catch {
-        return value;
+  @Transform(
+    ({ value }) => {
+      if (typeof value === 'string') {
+        try {
+          return JSON.parse(value);
+        } catch {
+          return value;
+        }
       }
-    }
 
-    return value;
-  })
+      return value;
+    },
+    { toClassOnly: true },
+  )
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateProductColorDto)

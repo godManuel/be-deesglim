@@ -9,6 +9,12 @@ export class ShippingDetails {
   userId: string;
 
   @Prop({ required: true })
+  firstName: string;
+
+  @Prop({ required: true })
+  lastName: string;
+
+  @Prop({ required: true })
   line1: string;
 
   @Prop({ required: true })
