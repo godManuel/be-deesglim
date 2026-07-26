@@ -66,7 +66,8 @@ export class CreateProductDto {
     return value;
   })
   @IsArray()
-  @IsString({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => CreateProductColorDto)
   color?: CreateProductColorDto[];
 
   @ApiPropertyOptional({

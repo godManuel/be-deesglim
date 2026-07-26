@@ -1,21 +1,24 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsEnum, IsNotEmpty, IsNumber, Min } from 'class-validator';
-import { ColorType } from '../schemas/product-color.schema';
+
+export enum ColorType {
+  TRANSPARENT = 'TRANSPARENT',
+  BROWN = 'BROWN',
+}
 
 export class CreateProductColorDto {
   @ApiProperty({
-    example: 'Brown',
+    example: 'TRANSPARENT',
     enum: ColorType,
-    description: 'The color type',
   })
   @IsNotEmpty()
   @IsEnum(ColorType)
   colorType: ColorType;
 
   @ApiProperty({
-    example: 10,
-    description: 'Available quantity for this color',
+    example: 6,
+    description: 'Quantity available for this color',
   })
   @Type(() => Number)
   @IsNumber()
