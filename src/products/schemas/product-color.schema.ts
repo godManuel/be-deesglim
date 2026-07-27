@@ -1,6 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { ColorType } from '../enums/color-type.enum';
+import { ProductVariant, ProductVariantSchema } from './product-variant.schema';
+import { Types } from 'mongoose';
 
 @Schema({ _id: false })
 export class ProductColor {
@@ -25,6 +27,12 @@ export class ProductColor {
     default: 0,
   })
   colorQuantity: number;
+
+  @Prop({
+    type: [ProductVariantSchema],
+    default: [],
+  })
+  variants?: ProductVariant[];
 }
 
 export const ProductColorSchema = SchemaFactory.createForClass(ProductColor);

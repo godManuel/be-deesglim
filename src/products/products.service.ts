@@ -42,7 +42,6 @@ export class ProductsService {
   findById(productId: string) {
     return this.productModel
       .findById(productId)
-      .populate('variants')
       .populate('images')
       .populate('category')
       .exec();
@@ -81,17 +80,6 @@ export class ProductsService {
       throw new BadRequestException(
         'Category not found. Provide a valid category id or slug.',
       );
-    }
-
-    const variantIds: Types.ObjectId[] = [];
-    if (createProductDto.variants?.length) {
-      const variants = await this.variantModel.insertMany(
-        createProductDto.variants.map((variant: CreateProductVariantDto) => ({
-          ...variant,
-          inventoryCount: variant.inventoryCount ?? 0,
-        })),
-      );
-      variantIds.push(...variants.map((variant) => variant._id));
     }
 
     const imageIds: Types.ObjectId[] = [];
@@ -133,7 +121,6 @@ export class ProductsService {
       category: category._id,
       importantNote: createProductDto.importantNote,
       tags: createProductDto.tags,
-      variants: variantIds,
       images: imageIds,
       whyChoose: createProductDto.whyChoose,
       whyNotChoose: createProductDto.whyNotChoose,
@@ -173,20 +160,6 @@ export class ProductsService {
     // ---------------------------------------------------------------
     // 3. Create variants if provided
     // ---------------------------------------------------------------
-    const variantIds: Types.ObjectId[] = [];
-
-    if (createCustomProductDto.variants?.length) {
-      const variants = await this.variantModel.insertMany(
-        createCustomProductDto.variants.map(
-          (variant: CreateProductVariantDto) => ({
-            ...variant,
-            inventoryCount: variant.inventoryCount ?? 0,
-          }),
-        ),
-      );
-
-      variantIds.push(...variants.map((variant) => variant._id));
-    }
 
     // ---------------------------------------------------------------
     // 4. Upload product images to Cloudinary
@@ -233,8 +206,6 @@ export class ProductsService {
       isVisible: createCustomProductDto.isVisible ?? true,
 
       isFeatured: createCustomProductDto.isFeatured ?? false,
-
-      variants: variantIds,
 
       images: imageIds,
 
@@ -303,28 +274,12 @@ export class ProductsService {
     // ---------------------------------------------------------------
     // 4. Handle variants
     // ---------------------------------------------------------------
-    let variantIds = product.variants ?? [];
-
-    if (updateProductDto.variants !== undefined) {
-      // Get old variant IDs
-      const oldVariantIds = product.variants ?? [];
-
-      // Create new variants
-      const variants = await this.variantModel.insertMany(
-        updateProductDto.variants.map((variant: CreateProductVariantDto) => ({
-          ...variant,
-          inventoryCount: variant.inventoryCount ?? 0,
-        })),
-      );
-
-      variantIds = variants.map((variant) => variant._id);
-
-      // Delete old variants
-      if (oldVariantIds.length > 0) {
-        await this.variantModel.deleteMany({
-          _id: { $in: oldVariantIds },
-        });
-      }
+    if (updateProductDto.color) {
+      product.color = updateProductDto.color.map((color) => ({
+        colorType: color.colorType,
+        colorQuantity: color.colorQuantity,
+        variants: color.variants ?? [],
+      }));
     }
 
     // ---------------------------------------------------------------
@@ -391,8 +346,6 @@ export class ProductsService {
     product.isFeatured = updateProductDto.isFeatured ?? product.isFeatured;
 
     product.category = categoryId;
-
-    product.variants = variantIds;
 
     product.images = imageIds;
 

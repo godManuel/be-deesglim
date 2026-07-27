@@ -64,25 +64,35 @@ export class CartService {
       throw new NotFoundException('Product not found');
     }
 
-    let availableQuantity = 0;
+    // Find the selected color
+    const selectedColor = product.color?.find((c) => c.colorType === color);
+
+    if (!selectedColor) {
+      throw new NotFoundException(
+        `Color "${color}" is not available for this product.`,
+      );
+    }
+
+    let availableQuantity = selectedColor.colorQuantity;
     let variant: ProductVariantDocument | undefined;
 
+    // Validate variant if provided
+    // let availableQuantity = selectedColor.colorQuantity;
+    // let variant: ProductVariantDocument | undefined;
+
     if (variantId) {
-      variant = product.variants?.find(
-        (v: any) => v._id.toString() === variantId,
+      variant = selectedColor.variants?.find(
+        (v: any) => v._id?.toString() === variantId,
       ) as ProductVariantDocument | undefined;
 
       if (!variant) {
         throw new NotFoundException(
-          'The selected variant does not belong to this product',
+          `The selected variant does not belong to the "${color}" color.`,
         );
       }
 
-      availableQuantity = variant.inventoryCount;
-    } else {
-      availableQuantity = await this.getAvailableQuantity(
-        product.variants as unknown as Types.ObjectId[],
-      );
+      // Keep using the selected color's quantity
+      availableQuantity = selectedColor.colorQuantity;
     }
 
     const productObjectId = new Types.ObjectId(productId);
@@ -93,7 +103,15 @@ export class CartService {
       const sameProduct =
         existing.product.toString() === productObjectId.toString();
 
-      if (!sameProduct) return false;
+      if (!sameProduct) {
+        return false;
+      }
+
+      const sameColor = existing.color === color;
+
+      if (!sameColor) {
+        return false;
+      }
 
       // Product without variant
       if (!variantId) {
@@ -109,7 +127,7 @@ export class CartService {
 
     if (requestedTotalQuantity > availableQuantity) {
       throw new BadRequestException(
-        `Insufficient quantity for "${product.name}". Available: ${availableQuantity}, requested: ${requestedTotalQuantity}`,
+        `Insufficient quantity for "${product.name}" (${color}). Available: ${availableQuantity}, requested: ${requestedTotalQuantity}`,
       );
     }
 
@@ -159,20 +177,35 @@ export class CartService {
 
     let availableQuantity = 0;
 
-    const variantId = item.variant;
+    const selectedColor = product.color?.find(
+      (c) => c.colorType === item.color,
+    );
 
-    if (variantId) {
-      const variant = await this.variantModel.findById(variantId);
+    if (!selectedColor) {
+      throw new NotFoundException(
+        `Color "${item.color}" is no longer available for this product.`,
+      );
+    }
 
-      if (!variant) {
-        throw new NotFoundException('Product variant not found');
+    availableQuantity = selectedColor.colorQuantity;
+
+    if (item.variant) {
+      const variantId = item.variant;
+
+      if (variantId) {
+        const variant = selectedColor.variants?.find(
+          (v: any) => v._id?.toString() === variantId.toString(),
+        );
+
+        if (!variant) {
+          throw new NotFoundException(
+            'The selected variant no longer exists for this color.',
+          );
+        }
       }
 
-      availableQuantity = variant.inventoryCount;
-    } else {
-      availableQuantity = await this.getAvailableQuantity(
-        product.variants as Types.ObjectId[],
-      );
+      // Since you're managing stock by color,
+      // do NOT overwrite availableQuantity here.
     }
 
     if (quantity > availableQuantity) {

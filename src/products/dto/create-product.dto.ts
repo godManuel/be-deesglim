@@ -153,26 +153,26 @@ export class CreateProductDto {
   @IsString()
   category?: string;
 
-  @ApiPropertyOptional({
-    type: [CreateProductVariantDto],
-    description: 'Product variants as a JSON array',
-  })
-  @IsOptional()
-  @Transform(({ value }) => {
-    if (typeof value === 'string') {
-      try {
-        return JSON.parse(value);
-      } catch {
-        return value;
-      }
-    }
+  // @ApiPropertyOptional({
+  //   type: [CreateProductVariantDto],
+  //   description: 'Product variants as a JSON array',
+  // })
+  // @IsOptional()
+  // @Transform(({ value }) => {
+  //   if (typeof value === 'string') {
+  //     try {
+  //       return JSON.parse(value);
+  //     } catch {
+  //       return value;
+  //     }
+  //   }
 
-    return value;
-  })
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => CreateProductVariantDto)
-  variants?: CreateProductVariantDto[];
+  //   return value;
+  // })
+  // @IsArray()
+  // @ValidateNested({ each: true })
+  // @Type(() => CreateProductVariantDto)
+  // variants?: CreateProductVariantDto[];
 
   @ApiPropertyOptional({
     type: [CreateProductImageDto],

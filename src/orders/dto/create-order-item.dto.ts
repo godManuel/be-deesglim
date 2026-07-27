@@ -7,6 +7,7 @@ import {
   IsString,
   Min,
 } from 'class-validator';
+import { ColorType } from 'src/products/enums/color-type.enum';
 
 export class CreateOrderItemDto {
   @IsString()
@@ -16,6 +17,9 @@ export class CreateOrderItemDto {
   @IsString()
   @IsOptional()
   variantId?: string;
+
+  @IsNotEmpty()
+  color: ColorType;
 
   @IsString()
   @IsNotEmpty()

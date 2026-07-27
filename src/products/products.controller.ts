@@ -216,7 +216,6 @@ export class ProductsController {
       isVisible: parseBoolean(body.isVisible),
       isFeatured: parseBoolean(body.isFeatured),
       color: parseJsonValue(body.color, []),
-      variants: parseJsonValue(body.variants, []),
       images: parseJsonValue(body.images, []),
     };
   }

@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { ColorType } from 'src/products/enums/color-type.enum';
 
 export type PaymentTransactionDocument = PaymentTransaction & Document;
 
@@ -32,6 +33,8 @@ export class CheckoutItemSnapshot {
     default: null,
   })
   variantId?: string;
+
+  color: ColorType;
 
   @Prop({ required: true })
   name: string;

@@ -278,14 +278,14 @@ export class DashboardService {
 
     const products = await this.productModel
       .find()
-      .populate('variants')
-      .select('name variants')
+      .select('name color')
       .lean()
       .exec();
 
     const alerts: Array<{
       productId: string;
       productName: string;
+      color: string;
       variantId?: string;
       sku?: string;
       inventoryCount: number;
@@ -295,30 +295,34 @@ export class DashboardService {
     }> = [];
 
     for (const product of products) {
-      // Products no longer carry their own `quantity` — every product now
-      // sells through at least one variant, so inventory is only tracked
-      // (and alerted on) at the variant level via `inventoryCount`.
-      for (const variant of (product.variants as unknown as ProductVariantDocument[]) ??
-        []) {
-        const inventoryCount = Number((variant as any).inventoryCount ?? 0);
-        if (inventoryCount <= warningThreshold) {
-          alerts.push({
-            productId: product._id.toString(),
-            productName: product.name,
-            variantId: (variant as any)._id?.toString(),
-            sku: (variant as any).sku,
-            inventoryCount,
-            severity:
-              inventoryCount <= criticalThreshold ? 'CRITICAL' : 'WARNING',
-            source: 'VARIANT',
-            message:
-              inventoryCount <= criticalThreshold
-                ? `${inventoryCount} units left`
-                : `${inventoryCount} units remaining in stock`,
-          });
+      for (const color of product.color ?? []) {
+        for (const variant of color.variants ?? []) {
+          const inventoryCount = Number(variant.inventoryCount ?? 0);
+
+          if (inventoryCount <= warningThreshold) {
+            alerts.push({
+              productId: product._id.toString(),
+              productName: product.name,
+              color: color.colorType,
+              variantId: (variant as ProductVariantDocument)._id?.toString(),
+              sku: (variant as any).sku,
+              inventoryCount,
+              severity:
+                inventoryCount <= criticalThreshold ? 'CRITICAL' : 'WARNING',
+              source: 'VARIANT',
+              message:
+                inventoryCount <= criticalThreshold
+                  ? `${inventoryCount} units left`
+                  : `${inventoryCount} units remaining in stock`,
+            });
+          }
         }
       }
     }
+
+    return alerts
+      .sort((left, right) => left.inventoryCount - right.inventoryCount)
+      .slice(0, limit);
 
     return alerts
       .sort((left, right) => left.inventoryCount - right.inventoryCount)

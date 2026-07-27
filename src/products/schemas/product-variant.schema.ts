@@ -82,7 +82,7 @@ export class ProductVariant {
       'Lace Supply (optional), Ready to Ship Wigs, and Custom Wigs — head size.',
   })
   @Prop()
-  headSize?: string;
+  headSize?: number;
 
   @ApiPropertyOptional({
     example: 'Middle Part',
@@ -157,7 +157,7 @@ export class ProductVariant {
       'Units in stock. Not meaningful for Custom Wigs, which are made to order — leave at the default.',
   })
   @Prop({ default: 0 })
-  inventoryCount: number;
+  inventoryCount?: number;
 }
 
 export const ProductVariantSchema =

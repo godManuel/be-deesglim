@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { ColorType } from 'src/products/enums/color-type.enum';
 
 export type OrderDocument = Order & Document;
 
@@ -19,6 +20,13 @@ export class OrderItem {
 
   @Prop()
   variantId?: string;
+
+  @Prop({
+    type: String,
+    enum: Object.values(ColorType),
+    required: true,
+  })
+  color: ColorType;
 
   @Prop({ required: true })
   name: string;

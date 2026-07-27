@@ -112,13 +112,13 @@ export class Product {
   @Prop({ type: Types.ObjectId, ref: Category.name })
   category?: Types.ObjectId;
 
-  @ApiPropertyOptional({
-    example: ['64a0a7fa79bcf6e5f0d9a6b4'],
-    description: 'List of product variant IDs',
-    type: [String],
-  })
-  @Prop({ type: [{ type: Types.ObjectId, ref: ProductVariant.name }] })
-  variants?: Types.ObjectId[];
+  // @ApiPropertyOptional({
+  //   example: ['64a0a7fa79bcf6e5f0d9a6b4'],
+  //   description: 'List of product variant IDs',
+  //   type: [String],
+  // })
+  // @Prop({ type: [{ type: Types.ObjectId, ref: ProductVariant.name }] })
+  // variants?: Types.ObjectId[];
 
   @ApiPropertyOptional({
     example: ['64a0a7fa79bcf6e5f0d9a6b5'],
