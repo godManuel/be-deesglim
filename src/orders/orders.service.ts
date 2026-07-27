@@ -614,7 +614,6 @@ export class OrdersService {
         throw new BadRequestException('Cart contains an invalid product.');
       }
 
-      // Find selected color
       const selectedColor = product.color?.find(
         (productColor) => productColor.colorType === cartItem.color,
       );
@@ -625,7 +624,6 @@ export class OrdersService {
         );
       }
 
-      // Find selected variant if one was provided
       let selectedVariant: any = undefined;
 
       if (cartItem.variant) {
@@ -637,14 +635,11 @@ export class OrdersService {
 
         if (!selectedVariant) {
           throw new BadRequestException(
-            `The selected variant for "${product.name}" is no longer available.`,
+            `The selected variant for "${product.name}" is no longer available in the "${cartItem.color}" color.`,
           );
         }
       }
 
-      // ---------------------------------------------------------
-      // Variant price takes priority over product base price
-      // ---------------------------------------------------------
       const price = selectedVariant
         ? Number(selectedVariant.newPrice)
         : Number(product.price);
@@ -658,16 +653,13 @@ export class OrdersService {
       return {
         productId: product._id.toString(),
 
-        // Keep your existing variantId structure
-        variantId: selectedVariant?._id?.toString(),
-
-        // Important: preserve the selected color
+        // THIS MUST EXIST
         color: cartItem.color,
 
+        variantId: selectedVariant?._id?.toString(),
+
         name: product.name,
-
         price,
-
         quantity: Number(cartItem.quantity),
 
         images: (product.images ?? []).map((image: any) => image.url),

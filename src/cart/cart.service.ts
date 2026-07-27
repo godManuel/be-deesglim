@@ -12,6 +12,7 @@ import {
   ProductVariant,
   ProductVariantDocument,
 } from 'src/products/schemas/product-variant.schema';
+import { ColorType } from 'src/products/enums/color-type.enum';
 
 @Injectable()
 export class CartService {
@@ -52,7 +53,7 @@ export class CartService {
     productId: string,
     variantId: string | undefined,
     quantity: number,
-    color: string,
+    color: ColorType,
   ): Promise<CartDocument> {
     if (quantity <= 0) {
       throw new BadRequestException('Quantity must be greater than zero');

@@ -34,6 +34,11 @@ export class CheckoutItemSnapshot {
   })
   variantId?: string;
 
+  @Prop({
+    type: String,
+    enum: Object.values(ColorType),
+    required: true,
+  })
   color: ColorType;
 
   @Prop({ required: true })

@@ -1,4 +1,5 @@
 import {
+  IsEnum,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -6,6 +7,7 @@ import {
   IsString,
   IsUUID,
 } from 'class-validator';
+import { ColorType } from 'src/products/enums/color-type.enum';
 
 export class AddCartItemDto {
   @IsString()
@@ -19,7 +21,7 @@ export class AddCartItemDto {
   @IsOptional()
   variantId?: string;
 
-  @IsString()
   @IsNotEmpty()
-  color: string;
+  @IsEnum(ColorType)
+  color: ColorType;
 }
