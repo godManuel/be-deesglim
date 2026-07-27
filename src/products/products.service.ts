@@ -556,7 +556,6 @@ export class ProductsService {
 
     return this.productModel
       .find(filter)
-      .populate('variants')
       .populate('images')
       .populate('category')
       .exec();
@@ -565,7 +564,6 @@ export class ProductsService {
   findBySlug(slug: string): Promise<Product | null> {
     return this.productModel
       .findOne({ slug, isVisible: true })
-      .populate('variants')
       .populate('images')
       .populate('category')
       .exec();
