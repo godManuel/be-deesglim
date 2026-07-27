@@ -1,7 +1,16 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsNotEmpty, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform, Type } from 'class-transformer';
+import {
+  IsArray,
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { ColorType } from '../enums/color-type.enum';
+import { CreateProductVariantDto } from './create-product-variant.dto';
 
 export class CreateProductColorDto {
   @ApiProperty({
@@ -20,4 +29,25 @@ export class CreateProductColorDto {
   @IsInt()
   @Min(0)
   colorQuantity: number;
+
+  @ApiPropertyOptional({
+    type: [CreateProductVariantDto],
+    description: 'Variants available for this color',
+  })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    }
+
+    return value;
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateProductVariantDto)
+  variants?: CreateProductVariantDto[];
 }
