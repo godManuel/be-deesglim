@@ -116,21 +116,10 @@ export class ProductsController {
   @ApiBody({ type: CreateProductDto })
   @ApiResponse({ status: 201, description: 'Product created successfully' })
   create(
-    @Body() body: Record<string, any>,
-    @UploadedFiles() files: UploadedProductImageFile[] = [],
+    @Body() dto: CreateProductDto,
+    @UploadedFiles() files: UploadedProductImageFile[],
   ) {
-    const productPayload = this.normalizeCreateProductPayload(body, files);
-    const product = plainToInstance(CreateProductDto, productPayload);
-    const validationErrors = validateSync(product, {
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    });
-
-    if (validationErrors.length > 0) {
-      throw new BadRequestException(validationErrors);
-    }
-
-    return this.productsService.create(product, files);
+    return this.productsService.create(dto, files);
   }
 
   @Post('custom')
@@ -215,6 +204,7 @@ export class ProductsController {
       price: parseNumber(body.price),
       isVisible: parseBoolean(body.isVisible),
       isFeatured: parseBoolean(body.isFeatured),
+      color: parseJsonValue(body.color, []),
       variants: parseJsonValue(body.variants, []),
       images: parseJsonValue(body.images, []),
     };
