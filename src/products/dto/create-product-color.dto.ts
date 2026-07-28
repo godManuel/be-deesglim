@@ -3,8 +3,8 @@ import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsEnum,
-  IsInt,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   Min,
   ValidateNested,
@@ -26,7 +26,7 @@ export class CreateProductColorDto {
     description: 'Available quantity for this color',
   })
   @Type(() => Number)
-  @IsInt()
+  @IsNumber()
   @Min(0)
   colorQuantity: number;
 

@@ -55,80 +55,98 @@ export class CartService {
     quantity: number,
     color: ColorType,
   ): Promise<CartDocument> {
-    if (quantity <= 0) {
-      throw new BadRequestException('Quantity must be greater than zero');
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new BadRequestException('Quantity must be a positive integer.');
     }
 
     const product = await this.productsService.findById(productId);
 
     if (!product) {
-      throw new NotFoundException('Product not found');
+      throw new NotFoundException('Product not found.');
     }
 
-    // Find the selected color
-    const selectedColor = product.color?.find((c) => c.colorType === color);
-
-    if (!selectedColor) {
-      throw new NotFoundException(
-        `Color "${color}" is not available for this product.`,
+    if (!product.color?.length) {
+      throw new BadRequestException(
+        `"${product.name}" does not have any colors configured.`,
       );
     }
 
-    let availableQuantity = selectedColor.colorQuantity;
-    let variant: ProductVariantDocument | undefined;
+    const selectedColor = product.color.find(
+      (productColor) => productColor.colorType === color,
+    );
 
-    // Validate variant if provided
-    // let availableQuantity = selectedColor.colorQuantity;
-    // let variant: ProductVariantDocument | undefined;
-
-    if (variantId) {
-      variant = selectedColor.variants?.find(
-        (v: any) => v._id?.toString() === variantId,
-      ) as ProductVariantDocument | undefined;
-
-      if (!variant) {
-        throw new NotFoundException(
-          `The selected variant does not belong to the "${color}" color.`,
-        );
-      }
-
-      // Keep using the selected color's quantity
-      availableQuantity = selectedColor.colorQuantity;
+    if (!selectedColor) {
+      throw new BadRequestException(
+        `"${product.name}" is not available in the "${color}" color.`,
+      );
     }
 
-    const productObjectId = new Types.ObjectId(productId);
+    let selectedVariant: ProductVariantDocument | undefined;
+
+    if (variantId) {
+      selectedVariant = selectedColor.variants?.find(
+        (variant: any) => variant?._id?.toString() === variantId,
+      ) as ProductVariantDocument | undefined;
+
+      if (!selectedVariant) {
+        throw new NotFoundException(
+          `The selected variant does not exist in the "${color}" color.`,
+        );
+      }
+    }
+
+    let availableQuantity: number;
+
+    if (selectedVariant) {
+      availableQuantity = selectedVariant.inventoryCount ?? 0;
+    } else {
+      availableQuantity = selectedColor.colorQuantity ?? 0;
+    }
 
     const cart = await this.findOrCreateCart(userId);
 
     const item = cart.items.find((existing) => {
-      const sameProduct =
-        existing.product.toString() === productObjectId.toString();
+      // Safely get existing product ID
+      const existingProductId =
+        existing.product?._id?.toString?.() ?? existing.product?.toString?.();
+
+      if (!existingProductId) {
+        return false;
+      }
+
+      const sameProduct = existingProductId === productId;
 
       if (!sameProduct) {
         return false;
       }
 
+      // Color must match
       const sameColor = existing.color === color;
 
       if (!sameColor) {
         return false;
       }
 
-      // Product without variant
       if (!variantId) {
         return !existing.variant;
       }
 
-      // Product with variant
-      return existing.variant?.toString() === variantId;
+      const existingVariantId =
+        existing.variant?._id?.toString?.() ?? existing.variant?.toString?.();
+
+      return existingVariantId === variantId;
     });
 
-    const currentCartQuantity = item ? item.quantity : 0;
+    const currentCartQuantity = item?.quantity ?? 0;
+
     const requestedTotalQuantity = currentCartQuantity + quantity;
 
     if (requestedTotalQuantity > availableQuantity) {
       throw new BadRequestException(
-        `Insufficient quantity for "${product.name}" (${color}). Available: ${availableQuantity}, requested: ${requestedTotalQuantity}`,
+        `"${product.name}" (${color}) ${
+          selectedVariant ? 'variant' : 'color'
+        } only has ${availableQuantity} item(s) remaining. ` +
+          `You already have ${currentCartQuantity} in your cart and are requesting ${quantity} more.`,
       );
     }
 
@@ -137,9 +155,12 @@ export class CartService {
       item.color = color;
     } else {
       cart.items.push({
-        product: productObjectId,
+        product: new Types.ObjectId(productId),
+
         variant: variantId ? new Types.ObjectId(variantId) : undefined,
+
         quantity,
+
         color,
       } as CartItem);
     }

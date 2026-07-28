@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  HttpException,
+  InternalServerErrorException,
+  Injectable,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { createHash } from 'crypto';
@@ -30,6 +36,7 @@ import {
 import { TopCategoriesQueryDto } from './dto/top-categories-query.dto';
 import { ListProductsQueryDto } from './dto/list-products-query.dto';
 import { CreateCustomProductDto } from './dto/create-custom-product.dto';
+import { CreateProductColorDto } from './dto/create-product-color.dto';
 
 type UploadedProductImageFile = {
   buffer: Buffer;
@@ -65,72 +72,118 @@ export class ProductsService {
     createProductDto: CreateProductDto,
     imageFiles: UploadedProductImageFile[] = [],
   ): Promise<Product> {
-    const slug = await this.generateUniqueProductSlug(
-      createProductDto.slug || createProductDto.name,
-    );
+    try {
+      const slug = await this.generateUniqueProductSlug(
+        createProductDto.slug || createProductDto.name,
+      );
 
-    const category = await this.categoryModel.findOne({
-      $or: [
-        { _id: createProductDto.category },
-        { slug: createProductDto.category },
-      ],
-    });
+      const category = await this.categoryModel.findOne({
+        $or: [
+          { _id: createProductDto.category },
+          { slug: createProductDto.category },
+        ],
+      });
 
-    if (!category) {
-      throw new BadRequestException(
-        'Category not found. Provide a valid category id or slug.',
+      if (!category) {
+        throw new BadRequestException(
+          'Category not found. Provide a valid category id or slug.',
+        );
+      }
+
+      if (createProductDto.color?.length) {
+        this.validateColorInventory(createProductDto.color);
+      }
+
+      const imageIds: Types.ObjectId[] = [];
+
+      if (imageFiles.length) {
+        const uploadedImages = await Promise.all(
+          imageFiles.map((file, index) =>
+            this.uploadImageToCloudinary(file, index),
+          ),
+        );
+
+        const cloudinaryImages = await this.imageModel.insertMany(
+          uploadedImages.map((image, index) => ({
+            url: image.url,
+            altText: image.altText,
+            sortOrder: image.sortOrder ?? index,
+          })),
+        );
+
+        imageIds.push(...cloudinaryImages.map((image) => image._id));
+      }
+
+      if (createProductDto.images?.length) {
+        const images = await this.imageModel.insertMany(
+          createProductDto.images.map((image: CreateProductImageDto) => ({
+            ...image,
+            sortOrder: image.sortOrder ?? 0,
+          })),
+        );
+
+        imageIds.push(...images.map((image) => image._id));
+      }
+
+      const product = new this.productModel({
+        name: createProductDto.name,
+        slug,
+        description: createProductDto.description,
+
+        color: createProductDto.color,
+
+        isVisible: createProductDto.isVisible ?? true,
+        isFeatured: createProductDto.isFeatured ?? false,
+
+        category: category._id,
+
+        importantNote: createProductDto.importantNote,
+        tags: createProductDto.tags,
+
+        images: imageIds,
+
+        whyChoose: createProductDto.whyChoose,
+        whyNotChoose: createProductDto.whyNotChoose,
+
+        price: createProductDto.price ?? 0,
+        quantity: createProductDto.quantity ?? 0,
+
+        sizeGuidePdfUrl: createProductDto.sizeGuidePdfUrl,
+        skinToneGuidePdfUrl: createProductDto.skinToneGuidePdfUrl,
+      });
+
+      return await product.save();
+    } catch (error: any) {
+      if (error?.code === 11000) {
+        const duplicateField = Object.keys(error.keyPattern ?? {})[0];
+
+        const duplicateValue = error.keyValue?.[duplicateField];
+
+        if (duplicateField === 'name') {
+          throw new ConflictException(
+            `A product with the name "${duplicateValue}" already exists.`,
+          );
+        }
+
+        if (duplicateField === 'slug') {
+          throw new ConflictException(
+            `A product with the slug "${duplicateValue}" already exists.`,
+          );
+        }
+
+        throw new ConflictException(
+          `A product with this ${duplicateField} already exists.`,
+        );
+      }
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        'An error occurred while creating the product.',
       );
     }
-
-    const imageIds: Types.ObjectId[] = [];
-    if (imageFiles.length) {
-      const uploadedImages = await Promise.all(
-        imageFiles.map((file, index) =>
-          this.uploadImageToCloudinary(file, index),
-        ),
-      );
-
-      const cloudinaryImages = await this.imageModel.insertMany(
-        uploadedImages.map((image, index) => ({
-          url: image.url,
-          altText: image.altText,
-          sortOrder: image.sortOrder ?? index,
-        })),
-      );
-
-      imageIds.push(...cloudinaryImages.map((image) => image._id));
-    }
-
-    if (createProductDto.images?.length) {
-      const images = await this.imageModel.insertMany(
-        createProductDto.images.map((image: CreateProductImageDto) => ({
-          ...image,
-          sortOrder: image.sortOrder ?? 0,
-        })),
-      );
-      imageIds.push(...images.map((image) => image._id));
-    }
-
-    const product = new this.productModel({
-      name: createProductDto.name,
-      slug,
-      description: createProductDto.description,
-      color: createProductDto.color,
-      isVisible: createProductDto.isVisible ?? true,
-      isFeatured: createProductDto.isFeatured ?? false,
-      category: category._id,
-      importantNote: createProductDto.importantNote,
-      tags: createProductDto.tags,
-      images: imageIds,
-      whyChoose: createProductDto.whyChoose,
-      whyNotChoose: createProductDto.whyNotChoose,
-      price: createProductDto.price ?? 0,
-      quantity: createProductDto.quantity ?? 0,
-      sizeGuidePdfUrl: createProductDto.sizeGuidePdfUrl,
-      skinToneGuidePdfUrl: createProductDto.skinToneGuidePdfUrl,
-    });
-
-    return product.save();
   }
 
   async createCustomProduct(
@@ -606,6 +659,45 @@ export class ProductsService {
         ],
       })
       .exec();
+  }
+
+  private validateColorInventory(colors: CreateProductColorDto[]): void {
+    for (const color of colors) {
+      const colorQuantity = Number(color.colorQuantity);
+
+      if (!Number.isInteger(colorQuantity) || colorQuantity < 0) {
+        throw new BadRequestException(
+          `Invalid color quantity for "${color.colorType}".`,
+        );
+      }
+
+      // If there are no variants, there is nothing to sum.
+      if (!color.variants?.length) {
+        continue;
+      }
+
+      let totalVariantInventory = 0;
+
+      for (const variant of color.variants) {
+        const inventoryCount = Number(variant.inventoryCount);
+
+        if (!Number.isInteger(inventoryCount) || inventoryCount < 0) {
+          throw new BadRequestException(
+            `Invalid inventoryCount for a variant in "${color.colorType}".`,
+          );
+        }
+
+        totalVariantInventory += inventoryCount;
+      }
+
+      if (totalVariantInventory !== colorQuantity) {
+        throw new BadRequestException(
+          `The total inventory of variants for "${color.colorType}" ` +
+            `(${totalVariantInventory}) must equal the color quantity ` +
+            `(${colorQuantity}).`,
+        );
+      }
+    }
   }
 
   async getTopCategories(query: TopCategoriesQueryDto) {

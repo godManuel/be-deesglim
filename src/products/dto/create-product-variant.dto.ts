@@ -1,5 +1,11 @@
-import { IsNumber, IsOptional, IsString, Min } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class CreateProductVariantDto {
@@ -129,13 +135,12 @@ export class CreateProductVariantDto {
   @IsNumber()
   newPrice?: number;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 10,
     description: 'Available inventory count',
   })
-  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  inventoryCount?: number;
+  inventoryCount: number;
 }

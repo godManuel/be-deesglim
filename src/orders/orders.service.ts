@@ -416,8 +416,9 @@ export class OrdersService {
       const productId = new Types.ObjectId(item.productId);
 
       // ============================================================
-      // Find the latest product
+      // 1. FIND THE LATEST PRODUCT
       // ============================================================
+
       const product = await this.productModel
         .findById(productId)
         .session(session)
@@ -430,8 +431,9 @@ export class OrdersService {
       }
 
       // ============================================================
-      // Find the selected color
+      // 2. FIND THE SELECTED COLOR
       // ============================================================
+
       const selectedColor = product.color?.find(
         (productColor) => productColor.colorType === item.color,
       );
@@ -443,9 +445,14 @@ export class OrdersService {
       }
 
       // ============================================================
-      // Validate the selected variant
+      // 3. VARIANT PRODUCT
       // ============================================================
+
       if (item.variantId) {
+        // ----------------------------------------------------------
+        // Find variant inside the selected color
+        // ----------------------------------------------------------
+
         const selectedVariant = selectedColor.variants?.find(
           (variant: any) =>
             variant._id?.toString() === item.variantId?.toString(),
@@ -456,24 +463,82 @@ export class OrdersService {
             `Product variant ${item.variantId} was not found in the "${item.color}" color of "${product.name}".`,
           );
         }
+
+        // ----------------------------------------------------------
+        // Get variant inventory
+        // ----------------------------------------------------------
+
+        const variantInventory = Number(selectedVariant.inventoryCount ?? 0);
+
+        // ----------------------------------------------------------
+        // Get color inventory
+        // ----------------------------------------------------------
+
+        const colorInventory = Number(selectedColor.colorQuantity ?? 0);
+
+        // ----------------------------------------------------------
+        // Check variant inventory
+        // ----------------------------------------------------------
+
+        if (quantity > variantInventory) {
+          throw new BadRequestException(
+            `Insufficient stock for "${product.name}" (${item.color}) ` +
+              `selected variant. ` +
+              `Available: ${variantInventory}, ` +
+              `requested: ${quantity}.`,
+          );
+        }
+
+        // ----------------------------------------------------------
+        // Check color inventory
+        // ----------------------------------------------------------
+
+        if (quantity > colorInventory) {
+          throw new BadRequestException(
+            `Insufficient stock for "${product.name}" (${item.color}). ` +
+              `Available: ${colorInventory}, ` +
+              `requested: ${quantity}.`,
+          );
+        }
+
+        // ==========================================================
+        // DEDUCT FROM BOTH INVENTORIES
+        // ==========================================================
+
+        // Deduct from the selected variant
+        selectedVariant.inventoryCount = variantInventory - quantity;
+
+        // Deduct from the selected color
+        selectedColor.colorQuantity = colorInventory - quantity;
       }
 
       // ============================================================
-      // Check color inventory
+      // 4. PRODUCT WITHOUT VARIANT
       // ============================================================
-      const availableQuantity = selectedColor.colorQuantity ?? 0;
+      else {
+        const colorInventory = Number(selectedColor.colorQuantity ?? 0);
 
-      if (quantity > availableQuantity) {
-        throw new BadRequestException(
-          `Insufficient stock for "${product.name}" (${item.color}). ` +
-            `Available: ${availableQuantity}, requested: ${quantity}.`,
-        );
+        // ----------------------------------------------------------
+        // Check color inventory
+        // ----------------------------------------------------------
+
+        if (quantity > colorInventory) {
+          throw new BadRequestException(
+            `Insufficient stock for "${product.name}" (${item.color}). ` +
+              `Available: ${colorInventory}, requested: ${quantity}.`,
+          );
+        }
+
+        // ----------------------------------------------------------
+        // Deduct from color inventory
+        // ----------------------------------------------------------
+
+        selectedColor.colorQuantity = colorInventory - quantity;
       }
 
       // ============================================================
-      // Deduct quantity from the selected color
+      // 5. SAVE PRODUCT
       // ============================================================
-      selectedColor.colorQuantity = availableQuantity - quantity;
 
       await product.save({ session });
     }
@@ -551,9 +616,6 @@ export class OrdersService {
       throw new BadRequestException('Cannot checkout an empty cart.');
     }
 
-    // ---------------------------------------------------------
-    // 1. Validate every cart item
-    // ---------------------------------------------------------
     for (const cartItem of cart.items as any[]) {
       const product = cartItem.product as ProductDocument;
 
@@ -561,52 +623,72 @@ export class OrdersService {
         throw new BadRequestException('Cart contains an invalid product.');
       }
 
-      // ---------------------------------------------------------
-      // Find the selected color on the product
-      // ---------------------------------------------------------
+      const requestedQuantity = Number(cartItem.quantity);
+
+      if (!Number.isInteger(requestedQuantity) || requestedQuantity <= 0) {
+        throw new BadRequestException(
+          `Invalid quantity for "${product.name}".`,
+        );
+      }
+
+      if (!cartItem.color) {
+        throw new BadRequestException(
+          `Cart item "${product.name}" is missing a color.`,
+        );
+      }
+
       const selectedColor = product.color?.find(
-        (productColor) => productColor.colorType === cartItem.color,
+        (productColor: any) => productColor.colorType === cartItem.color,
       );
 
       if (!selectedColor) {
         throw new BadRequestException(
-          `"${product.name}" is no longer available in the selected color "${cartItem.color}".`,
+          `"${product.name}" is no longer available in the "${cartItem.color}" color.`,
         );
       }
 
-      // ---------------------------------------------------------
-      // Validate requested quantity against the color quantity
-      // ---------------------------------------------------------
-      const availableQuantity = selectedColor.colorQuantity ?? 0;
-
-      if (cartItem.quantity > availableQuantity) {
-        throw new BadRequestException(
-          `"${product.name}" (${cartItem.color}) only has ${availableQuantity} item(s) remaining.`,
-        );
-      }
-
-      // ---------------------------------------------------------
-      // If a variant was selected, make sure the variant
-      // belongs to the selected color
-      // ---------------------------------------------------------
       if (cartItem.variant) {
-        const variantId = cartItem.variant.toString();
+        const variantId =
+          cartItem.variant?._id?.toString?.() ?? cartItem.variant?.toString?.();
+
+        if (!variantId) {
+          throw new BadRequestException(
+            `Invalid variant for "${product.name}".`,
+          );
+        }
 
         const selectedVariant = selectedColor.variants?.find(
-          (variant: any) => variant._id?.toString() === variantId,
+          (variant: any) => variant?._id?.toString?.() === variantId,
         );
 
         if (!selectedVariant) {
           throw new BadRequestException(
-            `The selected variant for "${product.name}" is no longer available in the "${cartItem.color}" color.`,
+            `Product variant ${variantId} was not found in the "${cartItem.color}" color of "${product.name}".`,
+          );
+        }
+
+        const availableQuantity = Number(selectedVariant.inventoryCount ?? 0);
+
+        if (requestedQuantity > availableQuantity) {
+          throw new BadRequestException(
+            `"${product.name}" (${cartItem.color}) only has ` +
+              `${availableQuantity} item(s) remaining for the selected variant. ` +
+              `Requested: ${requestedQuantity}.`,
+          );
+        }
+      } else {
+        const availableQuantity = Number(selectedColor.colorQuantity ?? 0);
+
+        if (requestedQuantity > availableQuantity) {
+          throw new BadRequestException(
+            `"${product.name}" (${cartItem.color}) only has ` +
+              `${availableQuantity} item(s) remaining. ` +
+              `Requested: ${requestedQuantity}.`,
           );
         }
       }
     }
 
-    // ---------------------------------------------------------
-    // 2. Create immutable checkout snapshot
-    // ---------------------------------------------------------
     const snapshotItems = cart.items.map((cartItem: any) => {
       const product = cartItem.product as ProductDocument;
 
@@ -615,34 +697,33 @@ export class OrdersService {
       }
 
       const selectedColor = product.color?.find(
-        (productColor) => productColor.colorType === cartItem.color,
+        (productColor: any) => productColor.colorType === cartItem.color,
       );
 
       if (!selectedColor) {
         throw new BadRequestException(
-          `"${product.name}" is no longer available in the selected color "${cartItem.color}".`,
+          `"${product.name}" is no longer available in the "${cartItem.color}" color.`,
         );
       }
 
       let selectedVariant: any = undefined;
 
       if (cartItem.variant) {
-        const variantId = cartItem.variant.toString();
+        const variantId =
+          cartItem.variant?._id?.toString?.() ?? cartItem.variant?.toString?.();
 
         selectedVariant = selectedColor.variants?.find(
-          (variant: any) => variant._id?.toString() === variantId,
+          (variant: any) => variant?._id?.toString?.() === variantId,
         );
 
         if (!selectedVariant) {
           throw new BadRequestException(
-            `The selected variant for "${product.name}" is no longer available in the "${cartItem.color}" color.`,
+            `Selected variant was not found in the "${cartItem.color}" color of "${product.name}".`,
           );
         }
       }
 
-      const price = selectedVariant
-        ? Number(selectedVariant.newPrice)
-        : Number(product.price);
+      const price = Number(product.price);
 
       if (Number.isNaN(price)) {
         throw new BadRequestException(
@@ -652,23 +733,15 @@ export class OrdersService {
 
       return {
         productId: product._id.toString(),
-
-        // THIS MUST EXIST
-        color: cartItem.color,
-
         variantId: selectedVariant?._id?.toString(),
-
+        color: cartItem.color,
         name: product.name,
         price,
         quantity: Number(cartItem.quantity),
-
         images: (product.images ?? []).map((image: any) => image.url),
       };
     });
 
-    // ---------------------------------------------------------
-    // 3. Calculate checkout totals
-    // ---------------------------------------------------------
     const subtotal = snapshotItems.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0,
@@ -677,7 +750,6 @@ export class OrdersService {
     const taxTotal = payload.taxTotal ?? 0;
     const shippingTotal = payload.shippingTotal ?? 0;
     const discountTotal = payload.discountTotal ?? 0;
-
     const total = subtotal + taxTotal + shippingTotal - discountTotal;
 
     if (total <= 0) {
@@ -686,9 +758,6 @@ export class OrdersService {
       );
     }
 
-    // ---------------------------------------------------------
-    // 4. Return checkout data
-    // ---------------------------------------------------------
     return {
       items: snapshotItems,
       shippingAddress: payload.shippingAddress,

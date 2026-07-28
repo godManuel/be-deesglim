@@ -4,26 +4,6 @@ import { Document } from 'mongoose';
 
 export type ProductVariantDocument = ProductVariant & Document;
 
-/**
- * A single flexible variant schema shared by all four product categories.
- * Each category only populates the subset of fields relevant to it:
- *
- *  - Lace Supply:        headSize (optional), laceSize, newPrice, oldPrice,
- *                        inventoryCount, whyChoose, whyNotChoose
- *  - Closures/Frontals:  color, texture, length, laceType, inventoryCount,
- *                        newPrice, oldPrice
- *  - Ready to Ship Wigs: length, closureSize, frontalSize, headSize,
- *                        parting, customizationNote, extraFee
- *                        (priced at the product level — see Product.price)
- *  - Custom Wigs:        laceSize, hairType, parting, styling, length,
- *                        headSize, specialNote, laceCustomization
- *                        (made to order — no price or inventoryCount)
- *
- * Validating that the *right* subset is present for a given product's
- * `productType` belongs in the DTO/service layer, not here — Mongoose
- * can't cleanly express "required only when the parent product is
- * category X" for a field on a separately-referenced collection.
- */
 @Schema()
 export class ProductVariant {
   @ApiPropertyOptional({
@@ -157,7 +137,7 @@ export class ProductVariant {
       'Units in stock. Not meaningful for Custom Wigs, which are made to order — leave at the default.',
   })
   @Prop({ default: 0 })
-  inventoryCount?: number;
+  inventoryCount: number;
 }
 
 export const ProductVariantSchema =
