@@ -616,6 +616,10 @@ export class OrdersService {
       throw new BadRequestException('Cannot checkout an empty cart.');
     }
 
+    // ============================================================
+    // 1. VALIDATE CART ITEMS AND INVENTORY
+    // ============================================================
+
     for (const cartItem of cart.items as any[]) {
       const product = cartItem.product as ProductDocument;
 
@@ -630,6 +634,10 @@ export class OrdersService {
           `Invalid quantity for "${product.name}".`,
         );
       }
+
+      // ----------------------------------------------------------
+      // Validate color
+      // ----------------------------------------------------------
 
       if (!cartItem.color) {
         throw new BadRequestException(
@@ -646,6 +654,10 @@ export class OrdersService {
           `"${product.name}" is no longer available in the "${cartItem.color}" color.`,
         );
       }
+
+      // ----------------------------------------------------------
+      // Variant selected
+      // ----------------------------------------------------------
 
       if (cartItem.variant) {
         const variantId =
@@ -667,6 +679,10 @@ export class OrdersService {
           );
         }
 
+        // --------------------------------------------------------
+        // Check variant inventory
+        // --------------------------------------------------------
+
         const availableQuantity = Number(selectedVariant.inventoryCount ?? 0);
 
         if (requestedQuantity > availableQuantity) {
@@ -677,6 +693,11 @@ export class OrdersService {
           );
         }
       } else {
+        // --------------------------------------------------------
+        // No variant selected
+        // Use color quantity
+        // --------------------------------------------------------
+
         const availableQuantity = Number(selectedColor.colorQuantity ?? 0);
 
         if (requestedQuantity > availableQuantity) {
@@ -689,12 +710,20 @@ export class OrdersService {
       }
     }
 
+    // ============================================================
+    // 2. CREATE CHECKOUT SNAPSHOT
+    // ============================================================
+
     const snapshotItems = cart.items.map((cartItem: any) => {
       const product = cartItem.product as ProductDocument;
 
       if (!product) {
         throw new BadRequestException('Cart contains an invalid product.');
       }
+
+      // ----------------------------------------------------------
+      // Find selected color
+      // ----------------------------------------------------------
 
       const selectedColor = product.color?.find(
         (productColor: any) => productColor.colorType === cartItem.color,
@@ -706,11 +735,21 @@ export class OrdersService {
         );
       }
 
+      // ----------------------------------------------------------
+      // Find selected variant
+      // ----------------------------------------------------------
+
       let selectedVariant: any = undefined;
 
       if (cartItem.variant) {
         const variantId =
           cartItem.variant?._id?.toString?.() ?? cartItem.variant?.toString?.();
+
+        if (!variantId) {
+          throw new BadRequestException(
+            `Invalid variant for "${product.name}".`,
+          );
+        }
 
         selectedVariant = selectedColor.variants?.find(
           (variant: any) => variant?._id?.toString?.() === variantId,
@@ -723,21 +762,44 @@ export class OrdersService {
         }
       }
 
-      const price = Number(product.price);
+      const price = Number(selectedVariant.newPrice);
 
-      if (Number.isNaN(price)) {
+      if (!Number.isFinite(price) || price < 0) {
         throw new BadRequestException(
-          `Product "${product.name}" has no valid price.`,
+          selectedVariant
+            ? `Selected variant for "${product.name}" has no valid price.`
+            : `Product "${product.name}" has no valid price.`,
+        );
+      }
+
+      const quantity = Number(cartItem.quantity);
+
+      if (!Number.isInteger(quantity) || quantity <= 0) {
+        throw new BadRequestException(
+          `Invalid quantity for "${product.name}".`,
         );
       }
 
       return {
         productId: product._id.toString(),
+
+        // The selected variant inside the selected color
         variantId: selectedVariant?._id?.toString(),
+
+        // The selected color
         color: cartItem.color,
+
+        // Product name
         name: product.name,
+
+        // Variant newPrice when variant exists,
+        // otherwise product.price
         price,
-        quantity: Number(cartItem.quantity),
+
+        // Requested quantity
+        quantity,
+
+        // Product images
         images: (product.images ?? []).map((image: any) => image.url),
       };
     });
@@ -750,6 +812,7 @@ export class OrdersService {
     const taxTotal = payload.taxTotal ?? 0;
     const shippingTotal = payload.shippingTotal ?? 0;
     const discountTotal = payload.discountTotal ?? 0;
+
     const total = subtotal + taxTotal + shippingTotal - discountTotal;
 
     if (total <= 0) {
@@ -761,11 +824,15 @@ export class OrdersService {
     return {
       items: snapshotItems,
       shippingAddress: payload.shippingAddress,
+
       subtotal,
       taxTotal,
       shippingTotal,
       discountTotal,
+
       total,
+
+      // Paystack expects amount in kobo
       amountKobo: Math.round(total * 100),
     };
   }
@@ -810,6 +877,7 @@ export class OrdersService {
     transaction: PaymentTransactionDocument,
     session: ClientSession,
   ): Promise<OrderDocument> {
+    // Prevent duplicate orders for the same payment reference
     const existingOrder = await this.orderModel
       .findOne({
         paymentReference: transaction.reference,
@@ -821,6 +889,7 @@ export class OrdersService {
       return existingOrder;
     }
 
+    // Generate order number from the first item
     const firstItemName = transaction.items[0]?.name ?? 'order';
 
     const normalizedItemName = firstItemName
@@ -831,18 +900,40 @@ export class OrdersService {
 
     const orderNumber = `ORD-${normalizedItemName}-${Date.now()}`;
 
+    // Create an immutable snapshot of the checkout items.
+    //
+    // The `price` here is already the price determined during
+    // buildCheckoutFromActiveCart().
+    //
+    // For a variant:
+    //   price = selectedColor.variants[].newPrice
+    //
+    // For a product without a variant:
+    //   price = product.price
+    //
+    // The order should NOT query the product or variant again for price,
+    // because the product price could change after payment.
     const orderItems = transaction.items.map((item) => ({
       productId: item.productId,
 
-      // Keep the selected color
+      // Selected color, e.g. "Brown"
       color: item.color,
 
-      // Keep the selected nested variant ID
+      // Selected variant inside the selected color
       variantId: item.variantId,
 
+      // Product name snapshot
       name: item.name,
+
+      // Price snapshot.
+      // This should already be selectedVariant.newPrice when a variant
+      // was selected during checkout initialization.
       price: item.price,
+
+      // Quantity purchased
       quantity: item.quantity,
+
+      // Product image snapshot
       images: item.images,
     }));
 
@@ -853,7 +944,7 @@ export class OrdersService {
       status: OrderStatus.PAID,
       shippingAddress: transaction.shippingAddress,
 
-      // Store the checkout snapshot
+      // Save the complete checkout snapshot
       items: orderItems,
 
       subtotal: transaction.subtotal,
