@@ -96,6 +96,34 @@ export class PaymentTransaction {
   @Prop({ type: [CheckoutItemSnapshotSchema], default: [] })
   items: CheckoutItemSnapshot[];
 
+  @Prop({
+    type: {
+      deliveryPartner: {
+        type: String,
+        required: true,
+      },
+      deliveryPartnerName: {
+        type: String,
+        required: true,
+      },
+      deliveryType: {
+        type: String,
+        required: true,
+      },
+      deliveryFee: {
+        type: Number,
+        required: true,
+      },
+    },
+    required: true,
+  })
+  deliveryDetails!: {
+    deliveryPartner: string;
+    deliveryPartnerName: string;
+    deliveryType: string;
+    deliveryFee: number;
+  };
+
   @Prop()
   paystackAccessCode?: string;
 

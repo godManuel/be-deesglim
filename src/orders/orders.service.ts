@@ -33,6 +33,12 @@ import {
   ShippingDetails,
   ShippingDetailsDocument,
 } from './schemas/shipping.schema';
+import {
+  DeliveryOption,
+  DeliveryOptionDocument,
+} from './schemas/delivery-option.schema';
+import { DeliveryDetailsDto } from './dto/delivery-details.dto';
+import { deliveryOptionsSeed } from './seeds/delivery-options.seed';
 
 @Injectable()
 export class OrdersService {
@@ -48,6 +54,8 @@ export class OrdersService {
     private readonly productModel: Model<ProductDocument>,
     @InjectModel(ProductVariant.name)
     private readonly variantModel: Model<ProductVariantDocument>,
+    @InjectModel(DeliveryOption.name)
+    private readonly deliveryOptionModel: Model<DeliveryOptionDocument>,
     @InjectModel(PaymentTransaction.name)
     private readonly paymentTxModel: Model<PaymentTransactionDocument>,
     private readonly configService: ConfigService,
@@ -164,6 +172,7 @@ export class OrdersService {
       total: checkoutData.total,
       shippingAddress: shippingDetails,
       items: checkoutData.items,
+      deliveryDetails: checkoutData.deliveryDetails,
       paystackAccessCode: initializeJson.data?.access_code,
       paystackAuthorizationUrl: initializeJson.data?.authorization_url,
       paystackStatus: initializeJson.data?.status ?? 'initialized',
@@ -599,6 +608,10 @@ export class OrdersService {
     userId: string,
     payload: InitializeCheckoutDto,
   ) {
+    const validatedDelivery = await this.validateDeliveryDetails(
+      payload.deliveryDetails,
+    );
+
     const cart = await this.cartModel
       .findOne({
         userId: new Types.ObjectId(userId),
@@ -810,7 +823,7 @@ export class OrdersService {
     );
 
     const taxTotal = payload.taxTotal ?? 0;
-    const shippingTotal = payload.shippingTotal ?? 0;
+    const shippingTotal = validatedDelivery.deliveryFee;
     const discountTotal = payload.discountTotal ?? 0;
 
     const total = subtotal + taxTotal + shippingTotal - discountTotal;
@@ -824,6 +837,8 @@ export class OrdersService {
     return {
       items: snapshotItems,
       shippingAddress: payload.shippingAddress,
+
+      deliveryDetails: validatedDelivery,
 
       subtotal,
       taxTotal,
@@ -890,50 +905,15 @@ export class OrdersService {
     }
 
     // Generate order number from the first item
-    const firstItemName = transaction.items[0]?.name ?? 'order';
+    const orderNumber = this.generateOrderNumber();
 
-    const normalizedItemName = firstItemName
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '')
-      .substring(0, 30);
-
-    const orderNumber = `ORD-${normalizedItemName}-${Date.now()}`;
-
-    // Create an immutable snapshot of the checkout items.
-    //
-    // The `price` here is already the price determined during
-    // buildCheckoutFromActiveCart().
-    //
-    // For a variant:
-    //   price = selectedColor.variants[].newPrice
-    //
-    // For a product without a variant:
-    //   price = product.price
-    //
-    // The order should NOT query the product or variant again for price,
-    // because the product price could change after payment.
     const orderItems = transaction.items.map((item) => ({
       productId: item.productId,
-
-      // Selected color, e.g. "Brown"
       color: item.color,
-
-      // Selected variant inside the selected color
       variantId: item.variantId,
-
-      // Product name snapshot
       name: item.name,
-
-      // Price snapshot.
-      // This should already be selectedVariant.newPrice when a variant
-      // was selected during checkout initialization.
       price: item.price,
-
-      // Quantity purchased
       quantity: item.quantity,
-
-      // Product image snapshot
       images: item.images,
     }));
 
@@ -943,6 +923,8 @@ export class OrdersService {
       paymentReference: transaction.reference,
       status: OrderStatus.PAID,
       shippingAddress: transaction.shippingAddress,
+
+      deliveryDetails: transaction.deliveryDetails,
 
       // Save the complete checkout snapshot
       items: orderItems,
@@ -955,5 +937,77 @@ export class OrdersService {
     });
 
     return order.save({ session });
+  }
+
+  private generateOrderNumber(): string {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+    return Array.from({ length: 6 }, () =>
+      characters.charAt(Math.floor(Math.random() * characters.length)),
+    ).join('');
+  }
+
+  private async validateDeliveryDetails(deliveryDetails: DeliveryDetailsDto) {
+    if (!deliveryDetails) {
+      throw new BadRequestException('Delivery details are required.');
+    }
+
+    const { deliveryPartner, deliveryType } = deliveryDetails;
+
+    // Find the delivery partner
+    const deliveryOption = await this.deliveryOptionModel.findOne({
+      id: deliveryPartner,
+      isActive: true,
+    });
+
+    if (!deliveryOption) {
+      throw new BadRequestException(
+        `Delivery partner "${deliveryPartner}" is not available.`,
+      );
+    }
+
+    // Check if the delivery partner supports
+    // the selected delivery type
+    if (!deliveryOption.deliveryTypes.includes(deliveryType)) {
+      throw new BadRequestException(
+        `${deliveryOption.title} does not support "${deliveryType}".`,
+      );
+    }
+
+    // Get the fee directly from the database
+    const deliveryFee = deliveryOption.deliveryFees[deliveryType];
+
+    if (deliveryFee === undefined || deliveryFee === null) {
+      throw new BadRequestException(
+        `No delivery fee has been configured for "${deliveryType}" with ${deliveryOption.title}.`,
+      );
+    }
+
+    return {
+      deliveryPartner,
+      deliveryPartnerName: deliveryOption.title,
+      deliveryType,
+      deliveryFee,
+    };
+  }
+
+  async seedDeliveryOptions() {
+    for (const deliveryOption of deliveryOptionsSeed) {
+      await this.deliveryOptionModel.updateOne(
+        {
+          id: deliveryOption.id,
+        },
+        {
+          $set: deliveryOption,
+        },
+        {
+          upsert: true,
+        },
+      );
+    }
+
+    return {
+      message: 'Delivery options seeded successfully.',
+    };
   }
 }

@@ -7,11 +7,16 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { CreateShippingAddressDto } from './create-shipping-address.dto';
+import { DeliveryDetailsDto } from './delivery-details.dto';
 
 export class InitializeCheckoutDto {
   @ValidateNested()
   @Type(() => CreateShippingAddressDto)
-  shippingAddress: CreateShippingAddressDto;
+  shippingAddress!: CreateShippingAddressDto;
+
+  @ValidateNested()
+  @Type(() => DeliveryDetailsDto)
+  deliveryDetails!: DeliveryDetailsDto;
 
   @IsOptional()
   @Type(() => Number)

@@ -18,6 +18,10 @@ import {
   ShippingDetails,
   ShippingDetailsSchema,
 } from './schemas/shipping.schema';
+import {
+  DeliveryOption,
+  DeliveryOptionSchema,
+} from './schemas/delivery-option.schema';
 
 @Module({
   imports: [
@@ -29,6 +33,7 @@ import {
       { name: PaymentTransaction.name, schema: PaymentTransactionSchema },
       { name: User.name, schema: UserSchema },
       { name: ShippingDetails.name, schema: ShippingDetailsSchema },
+      { name: DeliveryOption.name, schema: DeliveryOptionSchema },
     ]),
   ],
   controllers: [OrdersController],

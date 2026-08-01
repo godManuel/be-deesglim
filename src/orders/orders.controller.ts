@@ -134,4 +134,11 @@ export class OrdersController {
   ) {
     return this.ordersService.updateStatus(id, statusDto);
   }
+
+  @Post('/seed-delivery-options')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async seedDeliveryOptions() {
+    return this.ordersService.seedDeliveryOptions();
+  }
 }

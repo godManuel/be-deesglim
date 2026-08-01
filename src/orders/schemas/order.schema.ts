@@ -49,37 +49,53 @@ export const OrderItemSchema = SchemaFactory.createForClass(OrderItem);
 @Schema({ timestamps: true })
 export class Order {
   @Prop({ type: Types.ObjectId, required: true, ref: 'User' })
-  userId: Types.ObjectId;
+  userId!: Types.ObjectId;
 
   @Prop({ required: true, unique: true })
-  orderNumber: string;
+  orderNumber!: string;
 
   @Prop({ unique: true, sparse: true })
   paymentReference?: string;
 
   @Prop({ type: String, enum: OrderStatus, default: OrderStatus.PENDING })
-  status: OrderStatus;
+  status!: OrderStatus;
 
   @Prop({ type: Object, required: true })
-  shippingAddress: Record<string, any>;
+  shippingAddress!: Record<string, any>;
 
   @Prop({ type: [OrderItemSchema], default: [] })
-  items: OrderItem[];
+  items!: OrderItem[];
 
   @Prop({ required: true })
-  subtotal: number;
+  subtotal!: number;
 
   @Prop({ required: true })
-  taxTotal: number;
+  taxTotal!: number;
 
   @Prop({ required: true })
-  shippingTotal: number;
+  shippingTotal!: number;
+
+  @Prop({
+    type: {
+      deliveryPartner: String,
+      deliveryPartnerName: String,
+      deliveryType: String,
+      deliveryFee: Number,
+    },
+    required: true,
+  })
+  deliveryDetails!: {
+    deliveryPartner: string;
+    deliveryPartnerName: string;
+    deliveryType: string;
+    deliveryFee: number;
+  };
 
   @Prop({ required: true })
-  discountTotal: number;
+  discountTotal!: number;
 
   @Prop({ required: true })
-  total: number;
+  total!: number;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);
