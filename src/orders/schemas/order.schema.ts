@@ -60,8 +60,12 @@ export class Order {
   @Prop({ type: String, enum: OrderStatus, default: OrderStatus.PENDING })
   status!: OrderStatus;
 
-  @Prop({ type: Object, required: true })
-  shippingAddress!: Record<string, any>;
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'ShippingDetails',
+    required: true,
+  })
+  shippingAddress!: Types.ObjectId;
 
   @Prop({ type: [OrderItemSchema], default: [] })
   items!: OrderItem[];
