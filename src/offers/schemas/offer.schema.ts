@@ -36,10 +36,8 @@ export class Offer {
   })
   variantIds!: Types.ObjectId[];
 
-  @Prop({
-    required: true,
-  })
-  expirationDate!: Date;
+  @Prop({})
+  expirationDate?: Date;
 
   @Prop({
     default: true,

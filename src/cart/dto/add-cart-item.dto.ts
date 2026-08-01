@@ -11,17 +11,22 @@ import { ColorType } from 'src/products/enums/color-type.enum';
 
 export class AddCartItemDto {
   @IsString()
-  productId: string;
+  productId?: string;
 
   @IsInt()
   @IsPositive()
-  quantity: number;
+  @IsOptional()
+  quantity?: number;
 
   @IsString()
   @IsOptional()
   variantId?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsEnum(ColorType)
-  color: ColorType;
+  color?: ColorType;
+
+  @IsOptional()
+  @IsString()
+  offerId?: string;
 }

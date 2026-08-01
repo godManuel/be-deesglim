@@ -8,48 +8,75 @@ import { FilterQuery, Model, Types } from 'mongoose';
 import { Offer, OfferDocument } from './schemas/offer.schema';
 import { CreateOfferDto } from './dto/create-offer.dto';
 import { ListOffersQueryDto } from './dto/list-offers-query.dto';
-import {
-  ProductVariant,
-  ProductVariantDocument,
-} from '../products/schemas/product-variant.schema';
+import { Product, ProductDocument } from 'src/products/schemas/product.schema';
 
 @Injectable()
 export class OffersService {
   constructor(
     @InjectModel(Offer.name)
     private readonly offerModel: Model<OfferDocument>,
-    @InjectModel(ProductVariant.name)
-    private readonly variantModel: Model<ProductVariantDocument>,
+    @InjectModel(Product.name)
+    private readonly productModel: Model<ProductDocument>,
   ) {}
 
   async create(dto: CreateOfferDto): Promise<Offer> {
     const uniqueVariantIds = Array.from(new Set(dto.variantIds));
 
-    const existingVariants = await this.variantModel
+    // Find products containing the requested nested variant IDs
+    const products = await this.productModel
       .find({
-        _id: { $in: uniqueVariantIds.map((id) => new Types.ObjectId(id)) },
+        'color.variants._id': {
+          $in: uniqueVariantIds.map((id) => new Types.ObjectId(id)),
+        },
       })
-      .select('_id')
+      .select('color')
+      .lean()
       .exec();
 
-    if (existingVariants.length !== uniqueVariantIds.length) {
-      const foundIds = new Set(
-        existingVariants.map((variant) => variant._id.toString()),
-      );
-      const missingIds = uniqueVariantIds.filter((id) => !foundIds.has(id));
+    // Collect existing nested variant IDs
+    const existingVariantIds = new Set<string>();
+
+    for (const product of products) {
+      for (const color of product.color ?? []) {
+        for (const variant of color.variants ?? []) {
+          const variantWithId = variant as typeof variant & {
+            _id?: Types.ObjectId;
+          };
+
+          if (variantWithId._id) {
+            existingVariantIds.add(variantWithId._id.toString());
+          }
+        }
+      }
+    }
+
+    // Check for missing variant IDs
+    const missingVariantIds = uniqueVariantIds.filter(
+      (id) => !existingVariantIds.has(id),
+    );
+
+    if (missingVariantIds.length > 0) {
       throw new BadRequestException(
-        `The following variant id(s) do not exist: ${missingIds.join(', ')}`,
+        `The following variant id(s) do not exist: ${missingVariantIds.join(', ')}`,
       );
     }
 
-    const expirationDate = new Date(dto.expirationDate);
-    if (Number.isNaN(expirationDate.getTime())) {
-      throw new BadRequestException('Invalid expirationDate.');
-    }
-    if (expirationDate.getTime() <= Date.now()) {
-      throw new BadRequestException('expirationDate must be in the future.');
+    // Validate expiration date
+    let expirationDate: Date | undefined;
+
+    if (dto.expirationDate) {
+      expirationDate = new Date(dto.expirationDate);
+
+      if (Number.isNaN(expirationDate.getTime())) {
+        throw new BadRequestException('Invalid expirationDate.');
+      }
+
+      if (expirationDate.getTime() <= Date.now()) {
+        throw new BadRequestException('expirationDate must be in the future.');
+      }
     }
 
+    // Create offer
     const offer = new this.offerModel({
       name: dto.name,
       offerPrice: dto.offerPrice,
@@ -69,20 +96,118 @@ export class OffersService {
 
     const filter: FilterQuery<OfferDocument> = {};
 
+    // By default, return active offers.
+    // An offer is considered active if:
+    // 1. It has no expirationDate, OR
+    // 2. Its expirationDate is in the future.
     if (query.activeOnly !== false) {
-      filter.expirationDate = { $gt: new Date() };
+      filter.$or = [
+        {
+          expirationDate: {
+            $exists: false,
+          },
+        },
+        {
+          expirationDate: null,
+        },
+        {
+          expirationDate: {
+            $gt: new Date(),
+          },
+        },
+      ];
     }
 
-    const [data, total] = await Promise.all([
+    const [offers, total] = await Promise.all([
       this.offerModel
         .find(filter)
-        .populate('variantIds')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
+        .lean()
         .exec(),
+
       this.offerModel.countDocuments(filter).exec(),
     ]);
+
+    // ---------------------------------------------------------
+    // Get all variant IDs from the offers
+    // ---------------------------------------------------------
+
+    const variantIds = offers.flatMap((offer) =>
+      (offer.variantIds ?? []).map((id) => id.toString()),
+    );
+
+    // ---------------------------------------------------------
+    // Find products containing the nested variants
+    // ---------------------------------------------------------
+
+    let products: any[] = [];
+
+    if (variantIds.length > 0) {
+      products = await this.productModel
+        .find({
+          'color.variants._id': {
+            $in: variantIds.map((id) => new Types.ObjectId(id)),
+          },
+        })
+        .select('name slug color images')
+        .lean()
+        .exec();
+    }
+
+    // ---------------------------------------------------------
+    // Create a lookup map for nested variants
+    // ---------------------------------------------------------
+
+    const variantMap = new Map<string, any>();
+
+    for (const product of products) {
+      for (const color of product.color ?? []) {
+        for (const variant of color.variants ?? []) {
+          const variantId = (variant as any)._id?.toString();
+
+          if (!variantId) {
+            continue;
+          }
+
+          variantMap.set(variantId, {
+            variant,
+            product,
+            color,
+          });
+        }
+      }
+    }
+
+    // ---------------------------------------------------------
+    // Attach nested variant details to each offer
+    // ---------------------------------------------------------
+
+    const data = offers.map((offer) => {
+      const variants = (offer.variantIds ?? [])
+        .map((variantId) => {
+          const variantData = variantMap.get(variantId.toString());
+
+          if (!variantData) {
+            return null;
+          }
+
+          return {
+            variantId: variantId.toString(),
+            productId: variantData.product._id?.toString(),
+            productName: variantData.product.name,
+            color: variantData.color.colorType,
+            variant: variantData.variant,
+          };
+        })
+        .filter(Boolean);
+
+      return {
+        ...offer,
+        variantIds: variants,
+      };
+    });
 
     return {
       data,

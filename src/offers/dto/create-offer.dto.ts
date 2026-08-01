@@ -5,6 +5,7 @@ import {
   IsArray,
   IsMongoId,
   IsDate,
+  IsOptional,
 } from 'class-validator';
 
 export class CreateOfferDto {
@@ -28,6 +29,7 @@ export class CreateOfferDto {
   variantIds!: string[];
 
   @Type(() => Date)
+  @IsOptional()
   @IsDate()
-  expirationDate!: Date;
+  expirationDate?: Date;
 }

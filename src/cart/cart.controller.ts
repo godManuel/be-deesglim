@@ -32,6 +32,7 @@ export class CartController {
       addCartItemDto.variantId,
       addCartItemDto.quantity,
       addCartItemDto.color,
+      addCartItemDto.offerId,
     );
   }
 
