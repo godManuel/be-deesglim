@@ -22,6 +22,7 @@ import {
   DeliveryOption,
   DeliveryOptionSchema,
 } from './schemas/delivery-option.schema';
+import { MailModule } from 'src/mail/mail.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import {
       { name: ShippingDetails.name, schema: ShippingDetailsSchema },
       { name: DeliveryOption.name, schema: DeliveryOptionSchema },
     ]),
+    MailModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

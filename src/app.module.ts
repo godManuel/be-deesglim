@@ -12,6 +12,7 @@ import { ProductsModule } from './products/products.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { UsersModule } from './users/users.module';
 import { OffersModule } from './offers/offers.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { OffersModule } from './offers/offers.module';
     ContentModule,
     DashboardModule,
     OffersModule,
+    MailModule,
   ],
   controllers: [AppController],
   providers: [AppService],

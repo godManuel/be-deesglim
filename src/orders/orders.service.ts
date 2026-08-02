@@ -3,6 +3,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
@@ -39,9 +40,11 @@ import {
 } from './schemas/delivery-option.schema';
 import { DeliveryDetailsDto } from './dto/delivery-details.dto';
 import { deliveryOptionsSeed } from './seeds/delivery-options.seed';
+import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
   constructor(
     @InjectConnection()
     private readonly connection: Connection,
@@ -59,6 +62,7 @@ export class OrdersService {
     @InjectModel(PaymentTransaction.name)
     private readonly paymentTxModel: Model<PaymentTransactionDocument>,
     private readonly configService: ConfigService,
+    private readonly mailService: MailService,
   ) {}
 
   async initializeCheckout(
@@ -281,10 +285,6 @@ export class OrdersService {
         // 1. Create the order record (doesn't touch cart or stock yet).
         order = await this.createOrderFromTransaction(transaction, session);
 
-        // 2. Decrement stock. If this throws (e.g. insufficient inventory),
-        //    the entire transaction is rolled back — the order is discarded
-        //    and the cart is left untouched, so nothing is "cleared" on failure.
-
         await this.decrementProductStock(order.items, session);
 
         // 3. Only after stock has been successfully decremented do we
@@ -302,6 +302,21 @@ export class OrdersService {
 
         await transaction.save({ session });
       });
+
+      // Send email AFTER successful database transaction
+
+      const user = await this.userModel.findById(userId).select('email').exec();
+
+      if (user?.email) {
+        try {
+          await this.mailService.sendOrderConfirmationEmail(user.email, order!);
+        } catch (error) {
+          this.logger.error(
+            `Order ${order!.orderNumber} was created successfully, but confirmation email failed.`,
+            error,
+          );
+        }
+      }
     } finally {
       await session.endSession();
     }
