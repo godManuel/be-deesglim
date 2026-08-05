@@ -124,6 +124,14 @@ export class CreateProductDto {
   importantNote?: string;
 
   @ApiPropertyOptional({
+    example: 'This is an extra note for the product.',
+    description: 'Extra note for the product',
+  })
+  @IsOptional()
+  @IsString()
+  extraNote?: string;
+
+  @ApiPropertyOptional({
     example: [Tags.BEST_SELLER],
     enum: Tags,
     isArray: true,

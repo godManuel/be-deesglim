@@ -223,4 +223,75 @@ Thank you for choosing DeesGlim.
       throw error;
     }
   }
+
+  async sendOrderStatusUpdateEmail(
+    email: string,
+    orderNumber: string,
+    status: string,
+  ): Promise<void> {
+    const subject = `Order ${orderNumber} status update`;
+
+    const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h2>Your order has been updated</h2>
+
+      <p>Hello,</p>
+
+      <p>
+        We're writing to let you know that the status of your order
+        <strong>${orderNumber}</strong> has been updated.
+      </p>
+
+      <div style="
+        background-color: #f5f5f5;
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 8px;
+      ">
+        <p style="margin: 0;">
+          <strong>Order Number:</strong> ${orderNumber}
+        </p>
+
+        <p style="margin: 10px 0 0;">
+          <strong>New Status:</strong> ${status}
+        </p>
+      </div>
+
+      <p>
+        You can log in to your account to view more details about your order.
+      </p>
+
+      <p>
+        Thank you for shopping with us.
+      </p>
+    </div>
+  `;
+
+    const text = `
+Your order ${orderNumber} has been updated.
+
+New status: ${status}
+
+You can log in to your account to view more details about your order.
+
+Thank you for shopping with us.
+  `;
+
+    try {
+      await this.transporter.sendMail({
+        from: this.mailConfiguration.from,
+        to: email,
+        subject,
+        html,
+        text,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to send order status update email to ${email}`,
+        error,
+      );
+
+      throw error;
+    }
+  }
 }

@@ -404,12 +404,47 @@ export class OrdersService {
     statusDto: UpdateOrderStatusDto,
   ): Promise<Order> {
     const order = await this.orderModel.findById(orderId).exec();
+
     if (!order) {
       throw new NotFoundException('Order not found');
     }
 
+    // Keep the previous status so we can check if it actually changed
+    const previousStatus = order.status;
+
+    // Update order status
     order.status = statusDto.status;
-    return order.save();
+
+    // Save the updated order first
+    const updatedOrder = await order.save();
+
+    // Only send an email if the status actually changed
+    if (previousStatus !== updatedOrder.status) {
+      const user = await this.userModel
+        .findById(updatedOrder.userId)
+        .select('email')
+        .lean()
+        .exec();
+
+      if (user?.email) {
+        try {
+          await this.mailService.sendOrderStatusUpdateEmail(
+            user.email,
+            updatedOrder.orderNumber,
+            updatedOrder.status,
+          );
+        } catch (error) {
+          // The order has already been successfully updated.
+          // An email failure should not cause the update request to fail.
+          this.logger.error(
+            `Order ${updatedOrder.orderNumber} was updated successfully, but status update email failed.`,
+            error,
+          );
+        }
+      }
+    }
+
+    return updatedOrder;
   }
 
   private async decrementProductStock(
