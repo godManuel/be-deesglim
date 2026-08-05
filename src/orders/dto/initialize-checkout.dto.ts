@@ -3,6 +3,7 @@ import {
   IsNotEmpty,
   IsNumber,
   IsOptional,
+  IsString,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -17,6 +18,10 @@ export class InitializeCheckoutDto {
   @ValidateNested()
   @Type(() => DeliveryDetailsDto)
   deliveryDetails!: DeliveryDetailsDto;
+
+  @IsOptional()
+  @IsString()
+  extraNote?: string;
 
   @IsOptional()
   @Type(() => Number)

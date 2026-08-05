@@ -177,6 +177,7 @@ export class OrdersService {
       shippingAddress: shippingDetails,
       items: checkoutData.items,
       deliveryDetails: checkoutData.deliveryDetails,
+      extraNote: checkoutData.extraNote,
       paystackAccessCode: initializeJson.data?.access_code,
       paystackAuthorizationUrl: initializeJson.data?.authorization_url,
       paystackStatus: initializeJson.data?.status ?? 'initialized',
@@ -854,7 +855,6 @@ export class OrdersService {
 
         // Product name
         name: product.name,
-
         // Variant newPrice when variant exists,
         // otherwise product.price
         price,
@@ -889,6 +889,7 @@ export class OrdersService {
       shippingAddress: payload.shippingAddress,
 
       deliveryDetails: validatedDelivery,
+      extraNote: payload.extraNote,
 
       subtotal,
       taxTotal,
@@ -975,6 +976,7 @@ export class OrdersService {
       shippingAddress: transaction.shippingAddress,
 
       deliveryDetails: transaction.deliveryDetails,
+      extraNote: transaction.extraNote,
 
       // Save the complete checkout snapshot
       items: orderItems,

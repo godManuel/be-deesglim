@@ -138,7 +138,6 @@ export class ProductsService {
         category: category._id,
 
         importantNote: createProductDto.importantNote,
-        extraNote: createProductDto.extraNote,
         tags: createProductDto.tags,
 
         images: imageIds,

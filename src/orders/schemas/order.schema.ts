@@ -95,6 +95,9 @@ export class Order {
     deliveryFee: number;
   };
 
+  @Prop()
+  extraNote?: string;
+
   @Prop({ required: true })
   discountTotal!: number;
 

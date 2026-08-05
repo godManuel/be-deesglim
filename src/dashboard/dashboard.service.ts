@@ -151,27 +151,27 @@ export class DashboardService {
         { $unwind: '$items' },
         {
           $addFields: {
-            variantObjectId: { $toObjectId: '$items.productVariantId' },
+            productObjectId: {
+              $toObjectId: '$items.productId',
+            },
           },
         },
         {
           $lookup: {
             from: 'products',
-            let: { variantId: '$variantObjectId' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: { $in: ['$$variantId', '$variants'] },
-                },
-              },
-              {
-                $project: {
-                  _id: 0,
-                  productType: 1,
-                },
-              },
-            ],
+            localField: 'productObjectId',
+            foreignField: '_id',
             as: 'productMatch',
+          },
+        },
+        {
+          $addFields: {
+            productType: {
+              $ifNull: [
+                { $arrayElemAt: ['$productMatch.productType', 0] },
+                'UNKNOWN',
+              ],
+            },
           },
         },
         {

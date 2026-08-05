@@ -75,9 +75,6 @@ export class Product {
   @Prop()
   importantNote?: string;
 
-  @Prop()
-  extraNote?: string;
-
   @Prop({ type: [String], enum: Tags })
   tags?: Tags[];
 

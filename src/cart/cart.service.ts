@@ -67,8 +67,6 @@ export class CartService {
       (productColor) => productColor.colorType === color,
     );
 
-    console.log(JSON.stringify(selectedColor, null, 2));
-
     if (!selectedColor) {
       throw new BadRequestException(
         `"${product.name}" is not available in the "${color}" color.`,
@@ -81,17 +79,6 @@ export class CartService {
       selectedVariant = selectedColor.variants?.find(
         (variant: any) => variant?._id?.toString() === variantId,
       ) as ProductVariantDocument | undefined;
-
-      console.log('Incoming Variant ID:', variantId);
-
-      console.log(
-        'Variants:',
-        selectedColor.variants?.map((v: any) => ({
-          id: v._id?.toString(),
-          name: v.name,
-          inventory: v.inventoryCount,
-        })),
-      );
 
       if (!selectedVariant) {
         throw new NotFoundException(

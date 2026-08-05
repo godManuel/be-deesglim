@@ -96,6 +96,9 @@ export class PaymentTransaction {
   @Prop({ type: [CheckoutItemSnapshotSchema], default: [] })
   items: CheckoutItemSnapshot[];
 
+  @Prop()
+  extraNote?: string;
+
   @Prop({
     type: {
       deliveryPartner: {
