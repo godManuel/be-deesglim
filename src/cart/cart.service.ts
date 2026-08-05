@@ -8,18 +8,13 @@ import { Model, Types } from 'mongoose';
 import { Cart, CartDocument } from './schemas/cart.schema';
 import { CartItem } from './schemas/cart-item.schema';
 import { ProductsService } from 'src/products/products.service';
-import {
-  ProductVariant,
-  ProductVariantDocument,
-} from 'src/products/schemas/product-variant.schema';
+import { ProductVariantDocument } from 'src/products/schemas/product-variant.schema';
 import { ColorType } from 'src/products/enums/color-type.enum';
 
 @Injectable()
 export class CartService {
   constructor(
     @InjectModel(Cart.name) private readonly cartModel: Model<CartDocument>,
-    @InjectModel(ProductVariant.name)
-    private readonly variantModel: Model<ProductVariantDocument>,
     private readonly productsService: ProductsService,
   ) {}
 
@@ -32,9 +27,6 @@ export class CartService {
           populate: {
             path: 'images',
           },
-        },
-        {
-          path: 'items.variant',
         },
       ])
       .exec();
@@ -75,6 +67,8 @@ export class CartService {
       (productColor) => productColor.colorType === color,
     );
 
+    console.log(JSON.stringify(selectedColor, null, 2));
+
     if (!selectedColor) {
       throw new BadRequestException(
         `"${product.name}" is not available in the "${color}" color.`,
@@ -87,6 +81,17 @@ export class CartService {
       selectedVariant = selectedColor.variants?.find(
         (variant: any) => variant?._id?.toString() === variantId,
       ) as ProductVariantDocument | undefined;
+
+      console.log('Incoming Variant ID:', variantId);
+
+      console.log(
+        'Variants:',
+        selectedColor.variants?.map((v: any) => ({
+          id: v._id?.toString(),
+          name: v.name,
+          inventory: v.inventoryCount,
+        })),
+      );
 
       if (!selectedVariant) {
         throw new NotFoundException(
@@ -258,16 +263,16 @@ export class CartService {
     return this.findOrCreateCart(userId);
   }
 
-  private async getAvailableQuantity(
-    variantIds: Types.ObjectId[],
-  ): Promise<number> {
-    if (!variantIds?.length) return 0;
+  // private async getAvailableQuantity(
+  //   variantIds: Types.ObjectId[],
+  // ): Promise<number> {
+  //   if (!variantIds?.length) return 0;
 
-    const result = await this.variantModel.aggregate([
-      { $match: { _id: { $in: variantIds } } },
-      { $group: { _id: null, total: { $sum: '$inventoryCount' } } },
-    ]);
+  //   const result = await this.variantModel.aggregate([
+  //     { $match: { _id: { $in: variantIds } } },
+  //     { $group: { _id: null, total: { $sum: '$inventoryCount' } } },
+  //   ]);
 
-    return result[0]?.total ?? 0;
-  }
+  //   return result[0]?.total ?? 0;
+  // }
 }
