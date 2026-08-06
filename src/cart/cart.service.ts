@@ -1,9 +1,7 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -12,15 +10,12 @@ import { CartItem } from './schemas/cart-item.schema';
 import { ProductsService } from 'src/products/products.service';
 import { ProductVariantDocument } from 'src/products/schemas/product-variant.schema';
 import { ColorType } from 'src/products/enums/color-type.enum';
-import { ProductDocument } from 'src/products/schemas/product.schema';
 
 @Injectable()
 export class CartService {
   constructor(
     @InjectModel(Cart.name) private readonly cartModel: Model<CartDocument>,
     private readonly productsService: ProductsService,
-    @InjectModel('Product')
-    private readonly productModel: Model<ProductDocument>,
   ) {}
 
   async findOrCreateCart(userId: string): Promise<CartDocument> {
@@ -192,48 +187,42 @@ export class CartService {
     return this.findOrCreateCart(userId);
   }
 
-  // Service
   async updateItem(
     userId: string,
-    cartId: string,
+    itemId: string,
     quantity: number,
   ): Promise<CartDocument> {
-    if (!userId) {
-      throw new UnauthorizedException('User not authenticated');
-    }
-
-    if (!cartId) {
-      throw new BadRequestException('Cart ID is required');
-    }
-
-    if (!quantity || quantity <= 0) {
+    if (quantity <= 0) {
       throw new BadRequestException('Quantity must be greater than zero');
     }
 
-    const cart = await this.cartModel.findById(cartId);
+    const cart = await this.cartModel.findOne({
+      userId: new Types.ObjectId(userId),
+      status: 'ACTIVE',
+    });
 
     if (!cart) {
       throw new NotFoundException('Cart not found');
     }
 
-    if (cart.userId.toString() !== userId) {
-      throw new ForbiddenException('You do not have access to this cart');
-    }
-
-    const item = cart.items[0];
+    const item = cart.items.find((item: any) => item._id.equals(itemId));
 
     if (!item) {
       throw new NotFoundException('Cart item not found');
     }
 
-    const product = await this.productModel.findById(item.product);
+    const product = await this.productsService.findById(
+      item.product.toString(),
+    );
 
     if (!product) {
       throw new NotFoundException('Product not found');
     }
 
+    let availableQuantity = 0;
+
     const selectedColor = product.color?.find(
-      (c: any) => c.colorType === item.color,
+      (c) => c.colorType === item.color,
     );
 
     if (!selectedColor) {
@@ -242,18 +231,25 @@ export class CartService {
       );
     }
 
-    const availableQuantity = selectedColor.colorQuantity;
+    availableQuantity = selectedColor.colorQuantity;
 
     if (item.variant) {
-      const variant = selectedColor.variants?.find(
-        (v: any) => v._id?.toString() === item.variant?.toString(),
-      );
+      const variantId = item.variant;
 
-      if (!variant) {
-        throw new NotFoundException(
-          'The selected variant no longer exists for this color.',
+      if (variantId) {
+        const variant = selectedColor.variants?.find(
+          (v: any) => v._id?.toString() === variantId.toString(),
         );
+
+        if (!variant) {
+          throw new NotFoundException(
+            'The selected variant no longer exists for this color.',
+          );
+        }
       }
+
+      // Since you're managing stock by color,
+      // do NOT overwrite availableQuantity here.
     }
 
     if (quantity > availableQuantity) {
@@ -266,7 +262,7 @@ export class CartService {
 
     await cart.save();
 
-    return cart;
+    return this.findOrCreateCart(userId);
   }
 
   async removeItem(userId: string, itemId: string): Promise<CartDocument> {
