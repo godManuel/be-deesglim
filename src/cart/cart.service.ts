@@ -20,24 +20,48 @@ export class CartService {
 
   async findOrCreateCart(userId: string): Promise<CartDocument> {
     let cart = await this.cartModel
-      .findOne({ userId: new Types.ObjectId(userId), status: 'ACTIVE' })
-      .populate([
-        {
-          path: 'items.product',
-          populate: {
-            path: 'images',
-          },
+      .findOne({
+        userId: new Types.ObjectId(userId),
+        status: 'ACTIVE',
+      })
+      .populate({
+        path: 'items.product',
+        populate: {
+          path: 'images',
         },
-        { path: 'items.variant' },
-      ])
+      })
       .exec();
+
     if (!cart) {
       cart = await new this.cartModel({
         userId: new Types.ObjectId(userId),
         status: 'ACTIVE',
         items: [],
       }).save();
+
+      return cart;
     }
+
+    // Attach the embedded variant to each cart item
+    cart.items = cart.items.map((item: any) => {
+      const product = item.product as any;
+
+      const selectedColor = product.color?.find(
+        (c: any) => c.colorType === item.color,
+      );
+
+      const selectedVariant =
+        selectedColor?.variants?.find((v: any) => v._id.equals(item.variant)) ??
+        null;
+
+      const obj = item.toObject();
+
+      return {
+        ...obj,
+        variant: selectedVariant,
+      };
+    }) as any;
+
     return cart;
   }
 
