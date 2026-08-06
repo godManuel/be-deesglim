@@ -9,12 +9,14 @@ import {
   ProductVariantSchema,
 } from '../products/schemas/product-variant.schema';
 import { ProductsModule } from 'src/products/products.module';
+import { Product, ProductSchema } from 'src/products/schemas/product.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Cart.name, schema: CartSchema },
       { name: ProductVariant.name, schema: ProductVariantSchema },
+      { name: Product.name, schema: ProductSchema },
       { name: Offer.name, schema: OfferSchema },
     ]),
     ProductsModule,
