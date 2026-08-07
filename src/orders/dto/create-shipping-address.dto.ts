@@ -11,6 +11,10 @@ export class CreateShippingAddressDto {
 
   @IsString()
   @IsNotEmpty()
+  phone: string;
+
+  @IsString()
+  @IsNotEmpty()
   line1: string;
 
   @IsString()

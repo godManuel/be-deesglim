@@ -15,6 +15,9 @@ export class ShippingDetails {
   lastName: string;
 
   @Prop({ required: true })
+  phone: string;
+
+  @Prop({ required: true })
   line1: string;
 
   @Prop({ required: true })
