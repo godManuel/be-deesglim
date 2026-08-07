@@ -28,6 +28,7 @@ export class CartService {
             path: 'images',
           },
         },
+        { path: 'items.variant' },
       ])
       .exec();
     if (!cart) {
