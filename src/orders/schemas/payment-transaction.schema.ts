@@ -25,8 +25,11 @@ export enum PaymentMethod {
 
 @Schema({ _id: false })
 export class CheckoutItemSnapshot {
-  @Prop({ required: true })
-  productId: string;
+  @Prop()
+  offerId?: string;
+
+  @Prop()
+  productId?: string;
 
   @Prop({
     required: false,
@@ -37,21 +40,21 @@ export class CheckoutItemSnapshot {
   @Prop({
     type: String,
     enum: Object.values(ColorType),
-    required: true,
+    required: false,
   })
-  color: ColorType;
+  color?: ColorType;
 
   @Prop({ required: true })
-  name: string;
+  name!: string;
 
   @Prop({ required: true })
-  price: number;
+  price!: number;
 
   @Prop({ required: true })
-  quantity: number;
+  quantity!: number;
 
   @Prop({ type: [String] })
-  images: string[];
+  images!: string[];
 }
 
 export const CheckoutItemSnapshotSchema =
@@ -60,41 +63,41 @@ export const CheckoutItemSnapshotSchema =
 @Schema({ timestamps: true })
 export class PaymentTransaction {
   @Prop({ type: Types.ObjectId, required: true, ref: 'User' })
-  userId: Types.ObjectId;
+  userId!: Types.ObjectId;
 
   @Prop({ required: true, unique: true })
-  reference: string;
+  reference!: string;
 
   @Prop({
     type: String,
     enum: PaymentTransactionStatus,
     default: PaymentTransactionStatus.INITIATED,
   })
-  status: PaymentTransactionStatus;
+  status!: PaymentTransactionStatus;
 
   @Prop({ required: true })
-  amountKobo: number;
+  amountKobo!: number;
 
   @Prop({ required: true })
-  total: number;
+  total!: number;
 
   @Prop({ required: true })
-  subtotal: number;
+  subtotal!: number;
 
   @Prop({ required: true, default: 0 })
-  taxTotal: number;
+  taxTotal!: number;
 
   @Prop({ required: true, default: 0 })
-  shippingTotal: number;
+  shippingTotal!: number;
 
   @Prop({ required: true, default: 0 })
-  discountTotal: number;
+  discountTotal!: number;
 
   @Prop({ type: Object, required: true })
-  shippingAddress: Record<string, any>;
+  shippingAddress!: Record<string, any>;
 
   @Prop({ type: [CheckoutItemSnapshotSchema], default: [] })
-  items: CheckoutItemSnapshot[];
+  items!: CheckoutItemSnapshot[];
 
   @Prop()
   extraNote?: string;

@@ -10,11 +10,16 @@ import { CartItem } from './schemas/cart-item.schema';
 import { ProductsService } from 'src/products/products.service';
 import { ProductVariantDocument } from 'src/products/schemas/product-variant.schema';
 import { ColorType } from 'src/products/enums/color-type.enum';
+import { AddCartItemDto } from './dto/add-cart-item.dto';
+import { Offer, OfferDocument } from 'src/offers/schemas/offer.schema';
+import { resolveVariantId } from '../cart/utils/variant-reference';
+import { matchesCartItemSelection } from '../cart/utils/cart-item-selection';
 
 @Injectable()
 export class CartService {
   constructor(
     @InjectModel(Cart.name) private readonly cartModel: Model<CartDocument>,
+    @InjectModel(Offer.name) private readonly offerModel: Model<OfferDocument>,
     private readonly productsService: ProductsService,
   ) {}
 
@@ -30,6 +35,7 @@ export class CartService {
           path: 'images',
         },
       })
+      .populate('items.offer')
       .exec();
 
     if (!cart) {
@@ -37,24 +43,36 @@ export class CartService {
         userId: new Types.ObjectId(userId),
         status: 'ACTIVE',
         items: [],
+        total: 0,
       }).save();
 
       return cart;
     }
 
-    // Attach the embedded variant to each cart item
+    // Attach embedded variant only for normal product-cart items.
+    // Offer-cart items only need the populated offer document.
     cart.items = cart.items.map((item: any) => {
+      const obj = item.toObject();
+
+      if (item.offer) {
+        return obj;
+      }
+
       const product = item.product as any;
+
+      if (!product) {
+        return obj;
+      }
 
       const selectedColor = product.color?.find(
         (c: any) => c.colorType === item.color,
       );
 
+      const requestedVariantId = resolveVariantId(item.variant)?.toString();
       const selectedVariant =
-        selectedColor?.variants?.find((v: any) => v._id.equals(item.variant)) ??
-        null;
-
-      const obj = item.toObject();
+        selectedColor?.variants?.find(
+          (v: any) => resolveVariantId(v?._id)?.toString() === requestedVariantId,
+        ) ?? null;
 
       return {
         ...obj,
@@ -65,7 +83,34 @@ export class CartService {
     return cart;
   }
 
-  async addItem(
+  async addItem(userId: string, dto: AddCartItemDto): Promise<CartDocument> {
+    const { offerId, productId, variantId, quantity, color } = dto;
+
+    if (offerId) {
+      if (
+        productId ||
+        variantId ||
+        quantity !== undefined ||
+        color !== undefined
+      ) {
+        throw new BadRequestException(
+          'Provide either offerId or product details, not both.',
+        );
+      }
+
+      return this.addOfferToCart(userId, offerId);
+    }
+
+    if (!productId || quantity === undefined || !color) {
+      throw new BadRequestException(
+        'productId, quantity, and color are required when offerId is not provided.',
+      );
+    }
+
+    return this.addProductToCart(userId, productId, variantId, quantity, color);
+  }
+
+  private async addProductToCart(
     userId: string,
     productId: string,
     variantId: string | undefined,
@@ -120,71 +165,138 @@ export class CartService {
       availableQuantity = selectedColor.colorQuantity ?? 0;
     }
 
+    let lineUnitPrice = product.price ?? 0;
+
+    if (variantId) {
+      if (
+        selectedVariant?.newPrice === undefined ||
+        selectedVariant?.newPrice === null
+      ) {
+        throw new BadRequestException(
+          'The selected variant does not have a valid newPrice.',
+        );
+      }
+
+      lineUnitPrice = selectedVariant.newPrice;
+    }
+
     const cart = await this.findOrCreateCart(userId);
 
-    const item = cart.items.find((existing) => {
-      // Safely get existing product ID
-      const existingProductId =
-        existing.product?._id?.toString?.() ?? existing.product?.toString?.();
+    this.upsertCartItem(
+      cart,
+      product,
+      productId,
+      variantId,
+      quantity,
+      color,
+      availableQuantity,
+      !!selectedVariant,
+    );
 
-      if (!existingProductId) {
+    cart.total = (cart.total ?? 0) + lineUnitPrice * quantity;
+
+    await cart.save();
+
+    return this.findOrCreateCart(userId);
+  }
+
+  private async addOfferToCart(
+    userId: string,
+    offerId: string,
+  ): Promise<CartDocument> {
+    const offer = await this.offerModel.findById(offerId).exec();
+
+    if (!offer) {
+      throw new NotFoundException('Offer not found.');
+    }
+
+    const cart = await this.findOrCreateCart(userId);
+
+    const existingOfferItem = cart.items.find((item: any) => {
+      const existingOfferId =
+        item.offer?._id?.toString?.() ?? item.offer?.toString?.();
+
+      if (!existingOfferId) {
         return false;
       }
 
-      const sameProduct = existingProductId === productId;
-
-      if (!sameProduct) {
-        return false;
-      }
-
-      // Color must match
-      const sameColor = existing.color === color;
-
-      if (!sameColor) {
-        return false;
-      }
-
-      if (!variantId) {
-        return !existing.variant;
-      }
-
-      const existingVariantId =
-        existing.variant?._id?.toString?.() ?? existing.variant?.toString?.();
-
-      return existingVariantId === variantId;
+      return existingOfferId === offerId;
     });
 
-    const currentCartQuantity = item?.quantity ?? 0;
+    if (existingOfferItem) {
+      existingOfferItem.quantity = (existingOfferItem.quantity ?? 0) + 1;
+    } else {
+      cart.items.push({
+        offer: new Types.ObjectId(offerId),
+        quantity: 1,
+      } as CartItem);
+    }
 
+    cart.total = (cart.total ?? 0) + (offer.offerPrice ?? 0);
+
+    await cart.save();
+
+    return this.findOrCreateCart(userId);
+  }
+
+  private upsertCartItem(
+    cart: CartDocument,
+    product: any,
+    productId: string,
+    variantId: string | undefined,
+    quantity: number,
+    color: ColorType,
+    availableQuantity: number,
+    isVariantSelection: boolean,
+    offerId?: string,
+  ) {
+    const item = cart.items.find((existing) =>
+      matchesCartItemSelection(existing, {
+        productId,
+        color,
+        offerId,
+        variantId,
+      }),
+    );
+
+    const currentCartQuantity = item?.quantity ?? 0;
     const requestedTotalQuantity = currentCartQuantity + quantity;
 
     if (requestedTotalQuantity > availableQuantity) {
       throw new BadRequestException(
         `"${product.name}" (${color}) ${
-          selectedVariant ? 'variant' : 'color'
+          isVariantSelection ? 'variant' : 'color'
         } only has ${availableQuantity} item(s) remaining. ` +
           `You already have ${currentCartQuantity} in your cart and are requesting ${quantity} more.`,
       );
     }
 
     if (item) {
-      item.quantity += quantity;
+      item.quantity = (item.quantity ?? 0) + quantity;
       item.color = color;
-    } else {
-      cart.items.push({
-        product: new Types.ObjectId(productId),
 
-        variant: variantId ? new Types.ObjectId(variantId) : undefined,
+      if (offerId && !item.offer) {
+        item.offer = new Types.ObjectId(offerId);
+      }
 
-        quantity,
+      if (variantId) {
+        item.variant = resolveVariantId(variantId);
+      } else if (item.variant) {
+        item.variant = undefined;
+      }
 
-        color,
-      } as CartItem);
+      return;
     }
 
-    await cart.save();
+    const normalizedVariant = resolveVariantId(variantId);
 
-    return this.findOrCreateCart(userId);
+    cart.items.push({
+      product: new Types.ObjectId(productId),
+      offer: offerId ? new Types.ObjectId(offerId) : undefined,
+      variant: normalizedVariant,
+      quantity,
+      color,
+    } as CartItem);
   }
 
   async updateItem(
@@ -192,9 +304,17 @@ export class CartService {
     itemId: string,
     quantity: number,
   ): Promise<CartDocument> {
-    if (quantity <= 0) {
-      throw new BadRequestException('Quantity must be greater than zero');
+    // -------------------------------------------------------
+    // 1. Validate quantity
+    // -------------------------------------------------------
+
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new BadRequestException('Quantity must be a positive integer');
     }
+
+    // -------------------------------------------------------
+    // 2. Find active cart
+    // -------------------------------------------------------
 
     const cart = await this.cartModel.findOne({
       userId: new Types.ObjectId(userId),
@@ -205,21 +325,46 @@ export class CartService {
       throw new NotFoundException('Cart not found');
     }
 
-    const item = cart.items.find((item: any) => item._id.equals(itemId));
+    // -------------------------------------------------------
+    // 3. Find cart item
+    // -------------------------------------------------------
+
+    const item = cart.items.find(
+      (item: any) => item._id?.toString() === itemId,
+    );
 
     if (!item) {
       throw new NotFoundException('Cart item not found');
     }
 
-    const product = await this.productsService.findById(
-      item.product.toString(),
-    );
+    // -------------------------------------------------------
+    // 4. Safely get product ID
+    //
+    // item.product can either be:
+    // - ObjectId
+    // - populated Product object
+    // -------------------------------------------------------
+
+    const productId =
+      item.product?._id?.toString?.() ?? item.product?.toString?.();
+
+    if (!productId) {
+      throw new BadRequestException('Cart item contains an invalid product.');
+    }
+
+    // -------------------------------------------------------
+    // 5. Get product
+    // -------------------------------------------------------
+
+    const product = await this.productsService.findById(productId);
 
     if (!product) {
       throw new NotFoundException('Product not found');
     }
 
-    let availableQuantity = 0;
+    // -------------------------------------------------------
+    // 6. Find selected color
+    // -------------------------------------------------------
 
     const selectedColor = product.color?.find(
       (c) => c.colorType === item.color,
@@ -231,36 +376,72 @@ export class CartService {
       );
     }
 
-    availableQuantity = selectedColor.colorQuantity;
+    // -------------------------------------------------------
+    // 7. Determine available inventory
+    // -------------------------------------------------------
+
+    let availableQuantity = Number(selectedColor.colorQuantity ?? 0);
+
+    // -------------------------------------------------------
+    // 8. If cart item has a variant,
+    //    validate the variant and use its inventory
+    // -------------------------------------------------------
 
     if (item.variant) {
-      const variantId = item.variant;
+      const variantId =
+        item.variant?._id?.toString?.() ?? item.variant?.toString?.();
 
-      if (variantId) {
-        const variant = selectedColor.variants?.find(
-          (v: any) => v._id?.toString() === variantId.toString(),
-        );
-
-        if (!variant) {
-          throw new NotFoundException(
-            'The selected variant no longer exists for this color.',
-          );
-        }
+      if (!variantId) {
+        throw new BadRequestException('Cart item contains an invalid variant.');
       }
 
-      // Since you're managing stock by color,
-      // do NOT overwrite availableQuantity here.
+      const variant = selectedColor.variants?.find(
+        (v: any) => v?._id?.toString?.() === variantId,
+      );
+
+      if (!variant) {
+        throw new NotFoundException(
+          'The selected variant no longer exists for this color.',
+        );
+      }
+
+      // Variant has its own inventory.
+      availableQuantity = Number(variant.inventoryCount ?? 0);
     }
+
+    // -------------------------------------------------------
+    // 9. Validate requested quantity against inventory
+    // -------------------------------------------------------
 
     if (quantity > availableQuantity) {
       throw new BadRequestException(
-        `Only ${availableQuantity} item(s) available.`,
+        `"${product.name}" (${item.color}) only has ` +
+          `${availableQuantity} item(s) available. ` +
+          `Requested: ${quantity}.`,
       );
     }
 
+    // -------------------------------------------------------
+    // 10. Update cart item quantity
+    // -------------------------------------------------------
+
     item.quantity = quantity;
 
+    // -------------------------------------------------------
+    // 11. Recalculate cart total
+    // -------------------------------------------------------
+
+    await this.recalculateAndAssignCartTotal(cart);
+
+    // -------------------------------------------------------
+    // 12. Save cart
+    // -------------------------------------------------------
+
     await cart.save();
+
+    // -------------------------------------------------------
+    // 13. Return populated cart
+    // -------------------------------------------------------
 
     return this.findOrCreateCart(userId);
   }
@@ -276,8 +457,88 @@ export class CartService {
     cart.items = cart.items.filter(
       (item: any) => item._id?.toString() !== itemId,
     );
+
+    await this.recalculateAndAssignCartTotal(cart);
+
     await cart.save();
     return this.findOrCreateCart(userId);
+  }
+
+  private async recalculateAndAssignCartTotal(
+    cart: CartDocument,
+  ): Promise<void> {
+    let total = 0;
+
+    const offersPriceCache = new Map<string, number>();
+    const productCache = new Map<string, any>();
+
+    for (const item of cart.items as any[]) {
+      const quantity = item.quantity ?? 0;
+
+      if (quantity <= 0) {
+        continue;
+      }
+
+      const offerId = item.offer?._id?.toString?.() ?? item.offer?.toString?.();
+
+      if (offerId) {
+        let offerPrice = offersPriceCache.get(offerId);
+
+        if (offerPrice === undefined) {
+          const offer = await this.offerModel
+            .findById(offerId)
+            .select('offerPrice')
+            .lean()
+            .exec();
+
+          offerPrice = offer?.offerPrice ?? 0;
+          offersPriceCache.set(offerId, offerPrice);
+        }
+
+        total += offerPrice * quantity;
+        continue;
+      }
+
+      const productId =
+        item.product?._id?.toString?.() ?? item.product?.toString?.();
+
+      if (!productId) {
+        continue;
+      }
+
+      let product = productCache.get(productId);
+
+      if (!product) {
+        product = await this.productsService.findById(productId);
+        productCache.set(productId, product);
+      }
+
+      if (!product) {
+        continue;
+      }
+
+      const variantId =
+        item.variant?._id?.toString?.() ?? item.variant?.toString?.();
+
+      if (variantId) {
+        const selectedColor = product.color?.find(
+          (c: any) => c.colorType === item.color,
+        );
+
+        const selectedVariant = selectedColor?.variants?.find(
+          (v: any) => v?._id?.toString() === variantId,
+        );
+
+        const unitPrice = selectedVariant?.newPrice ?? 0;
+
+        total += unitPrice * quantity;
+        continue;
+      }
+
+      total += (product.price ?? 0) * quantity;
+    }
+
+    cart.total = total;
   }
 
   // private async getAvailableQuantity(

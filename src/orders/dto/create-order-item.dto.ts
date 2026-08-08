@@ -11,15 +11,19 @@ import { ColorType } from 'src/products/enums/color-type.enum';
 
 export class CreateOrderItemDto {
   @IsString()
-  @IsNotEmpty()
-  productId: string;
+  @IsOptional()
+  offerId?: string;
+
+  @IsString()
+  @IsOptional()
+  productId?: string;
 
   @IsString()
   @IsOptional()
   variantId?: string;
 
-  @IsNotEmpty()
-  color: ColorType;
+  @IsOptional()
+  color?: ColorType;
 
   @IsString()
   @IsNotEmpty()

@@ -8,11 +8,14 @@ export type CartItemDocument = CartItem & Document;
 
 @Schema()
 export class CartItem {
-  @Prop({ type: Types.ObjectId, ref: Product.name, required: true })
-  product: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: Product.name })
+  product?: Types.ObjectId;
 
-  @Prop({ required: true, min: 1 })
-  quantity: number;
+  @Prop({ type: Types.ObjectId, ref: 'Offer' })
+  offer?: Types.ObjectId;
+
+  @Prop({ min: 1 })
+  quantity?: number;
 
   @Prop({ type: Types.ObjectId, ref: ProductVariant.name })
   variant?: Types.ObjectId;
@@ -20,9 +23,8 @@ export class CartItem {
   @Prop({
     type: String,
     enum: Object.values(ColorType),
-    required: true,
   })
-  color: ColorType;
+  color?: ColorType;
 }
 
 export const CartItemSchema = SchemaFactory.createForClass(CartItem);

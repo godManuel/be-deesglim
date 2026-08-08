@@ -15,8 +15,11 @@ export enum OrderStatus {
 
 @Schema()
 export class OrderItem {
-  @Prop({ required: true })
-  productId: string;
+  @Prop()
+  offerId?: string;
+
+  @Prop()
+  productId?: string;
 
   @Prop()
   variantId?: string;
@@ -24,9 +27,9 @@ export class OrderItem {
   @Prop({
     type: String,
     enum: Object.values(ColorType),
-    required: true,
+    required: false,
   })
-  color: ColorType;
+  color?: ColorType;
 
   @Prop({ required: true })
   name: string;

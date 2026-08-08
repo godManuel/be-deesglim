@@ -7,13 +7,16 @@ export type CartDocument = Cart & Document;
 @Schema({ timestamps: true })
 export class Cart {
   @Prop({ type: Types.ObjectId, required: true, ref: 'User' })
-  userId: Types.ObjectId;
+  userId!: Types.ObjectId;
 
   @Prop({ default: 'ACTIVE' })
-  status: 'ACTIVE' | 'ORDERED';
+  status!: 'ACTIVE' | 'ORDERED';
 
   @Prop({ type: [CartItemSchema], default: [] })
-  items: CartItem[];
+  items!: CartItem[];
+
+  @Prop({ type: Number, default: 0, min: 0 })
+  total!: number;
 }
 
 export const CartSchema = SchemaFactory.createForClass(Cart);

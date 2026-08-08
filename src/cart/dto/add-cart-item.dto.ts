@@ -1,27 +1,33 @@
 import {
+  ValidateIf,
   IsEnum,
   IsInt,
-  IsNotEmpty,
   IsOptional,
   IsPositive,
   IsString,
-  IsUUID,
 } from 'class-validator';
 import { ColorType } from 'src/products/enums/color-type.enum';
 
 export class AddCartItemDto {
+  @IsOptional()
   @IsString()
-  productId: string;
+  offerId?: string;
 
+  @ValidateIf((dto) => !dto.offerId)
+  @IsString()
+  productId?: string;
+
+  @ValidateIf((dto) => !dto.offerId)
   @IsInt()
   @IsPositive()
-  quantity: number;
+  quantity?: number;
 
+  @ValidateIf((dto) => !dto.offerId)
   @IsString()
   @IsOptional()
   variantId?: string;
 
-  @IsNotEmpty()
+  @ValidateIf((dto) => !dto.offerId)
   @IsEnum(ColorType)
-  color: ColorType;
+  color?: ColorType;
 }

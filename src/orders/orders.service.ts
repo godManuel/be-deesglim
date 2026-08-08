@@ -29,6 +29,8 @@ import {
   ProductVariantDocument,
 } from '../products/schemas/product-variant.schema';
 import { Product, ProductDocument } from 'src/products/schemas/product.schema';
+import { ColorType } from 'src/products/enums/color-type.enum';
+import { OfferDocument } from 'src/offers/schemas/offer.schema';
 import { User, UserDocument } from 'src/users/schemas/user.schema';
 import {
   ShippingDetails,
@@ -41,6 +43,7 @@ import {
 import { DeliveryDetailsDto } from './dto/delivery-details.dto';
 import { deliveryOptionsSeed } from './seeds/delivery-options.seed';
 import { MailService } from 'src/mail/mail.service';
+import { calculateVolumeDiscount } from './utils/volume-discount';
 
 @Injectable()
 export class OrdersService {
@@ -463,6 +466,10 @@ export class OrdersService {
         throw new BadRequestException('Invalid quantity for order item.');
       }
 
+      if (item.offerId && !item.productId) {
+        continue;
+      }
+
       if (!item.productId) {
         throw new BadRequestException('Order item is missing a productId.');
       }
@@ -674,6 +681,7 @@ export class OrdersService {
           path: 'images',
         },
       })
+      .populate('items.offer')
       .exec();
 
     if (!cart || !cart.items?.length) {
@@ -685,6 +693,20 @@ export class OrdersService {
     // ============================================================
 
     for (const cartItem of cart.items as any[]) {
+      const offer = cartItem.offer as OfferDocument | undefined;
+
+      if (offer) {
+        const requestedQuantity = Number(cartItem.quantity);
+
+        if (!Number.isInteger(requestedQuantity) || requestedQuantity <= 0) {
+          throw new BadRequestException(
+            `Invalid quantity for offer "${offer.name}".`,
+          );
+        }
+
+        continue;
+      }
+
       const product = cartItem.product as ProductDocument;
 
       if (!product) {
@@ -696,26 +718,6 @@ export class OrdersService {
       if (!Number.isInteger(requestedQuantity) || requestedQuantity <= 0) {
         throw new BadRequestException(
           `Invalid quantity for "${product.name}".`,
-        );
-      }
-
-      // ----------------------------------------------------------
-      // Validate color
-      // ----------------------------------------------------------
-
-      if (!cartItem.color) {
-        throw new BadRequestException(
-          `Cart item "${product.name}" is missing a color.`,
-        );
-      }
-
-      const selectedColor = product.color?.find(
-        (productColor: any) => productColor.colorType === cartItem.color,
-      );
-
-      if (!selectedColor) {
-        throw new BadRequestException(
-          `"${product.name}" is no longer available in the "${cartItem.color}" color.`,
         );
       }
 
@@ -733,13 +735,25 @@ export class OrdersService {
           );
         }
 
+        const selectedColor = product.color?.find((productColor: any) =>
+          (productColor.variants ?? []).some(
+            (variant: any) => variant?._id?.toString?.() === variantId,
+          ),
+        );
+
+        if (!selectedColor) {
+          throw new BadRequestException(
+            `Product variant ${variantId} was not found for "${product.name}".`,
+          );
+        }
+
         const selectedVariant = selectedColor.variants?.find(
           (variant: any) => variant?._id?.toString?.() === variantId,
         );
 
         if (!selectedVariant) {
           throw new BadRequestException(
-            `Product variant ${variantId} was not found in the "${cartItem.color}" color of "${product.name}".`,
+            `Product variant ${variantId} was not found for "${product.name}".`,
           );
         }
 
@@ -762,6 +776,22 @@ export class OrdersService {
         // Use color quantity
         // --------------------------------------------------------
 
+        if (!cartItem.color) {
+          throw new BadRequestException(
+            `Cart item "${product.name}" is missing a color.`,
+          );
+        }
+
+        const selectedColor = product.color?.find(
+          (productColor: any) => productColor.colorType === cartItem.color,
+        );
+
+        if (!selectedColor) {
+          throw new BadRequestException(
+            `"${product.name}" is no longer available in the "${cartItem.color}" color.`,
+          );
+        }
+
         const availableQuantity = Number(selectedColor.colorQuantity ?? 0);
 
         if (requestedQuantity > availableQuantity) {
@@ -779,6 +809,34 @@ export class OrdersService {
     // ============================================================
 
     const snapshotItems = cart.items.map((cartItem: any) => {
+      const offer = cartItem.offer as OfferDocument | undefined;
+
+      if (offer) {
+        const quantity = Number(cartItem.quantity);
+
+        if (!Number.isInteger(quantity) || quantity <= 0) {
+          throw new BadRequestException(
+            `Invalid quantity for offer "${offer.name}".`,
+          );
+        }
+
+        const price = Number(offer.offerPrice ?? 0);
+
+        if (!Number.isFinite(price) || price < 0) {
+          throw new BadRequestException(
+            `Offer "${offer.name}" has no valid price.`,
+          );
+        }
+
+        return {
+          offerId: offer._id.toString(),
+          name: offer.name,
+          price,
+          quantity,
+          images: offer.image ? [offer.image] : [],
+        };
+      }
+
       const product = cartItem.product as ProductDocument;
 
       if (!product) {
@@ -786,24 +844,13 @@ export class OrdersService {
       }
 
       // ----------------------------------------------------------
-      // Find selected color
-      // ----------------------------------------------------------
-
-      const selectedColor = product.color?.find(
-        (productColor: any) => productColor.colorType === cartItem.color,
-      );
-
-      if (!selectedColor) {
-        throw new BadRequestException(
-          `"${product.name}" is no longer available in the "${cartItem.color}" color.`,
-        );
-      }
-
-      // ----------------------------------------------------------
       // Find selected variant
       // ----------------------------------------------------------
 
       let selectedVariant: any = undefined;
+      let selectedColorType: ColorType | undefined = cartItem.color;
+
+      let selectedColor: any = undefined;
 
       if (cartItem.variant) {
         const variantId =
@@ -815,24 +862,54 @@ export class OrdersService {
           );
         }
 
+        selectedColor = product.color?.find((productColor: any) =>
+          (productColor.variants ?? []).some(
+            (variant: any) => variant?._id?.toString?.() === variantId,
+          ),
+        );
+
+        if (!selectedColor) {
+          throw new BadRequestException(
+            `Selected variant was not found for "${product.name}".`,
+          );
+        }
+
         selectedVariant = selectedColor.variants?.find(
           (variant: any) => variant?._id?.toString?.() === variantId,
         );
 
         if (!selectedVariant) {
           throw new BadRequestException(
-            `Selected variant was not found in the "${cartItem.color}" color of "${product.name}".`,
+            `Selected variant was not found for "${product.name}".`,
           );
         }
+
+        selectedColorType = selectedColor.colorType;
+      } else {
+        if (!cartItem.color) {
+          throw new BadRequestException(
+            `Cart item "${product.name}" is missing a color.`,
+          );
+        }
+
+        selectedColor = product.color?.find(
+          (productColor: any) => productColor.colorType === cartItem.color,
+        );
+
+        if (!selectedColor) {
+          throw new BadRequestException(
+            `"${product.name}" is no longer available in the "${cartItem.color}" color.`,
+          );
+        }
+
+        selectedColorType = cartItem.color;
       }
 
-      const price = Number(selectedVariant.newPrice);
+      const price = Number(product.price ?? 0);
 
       if (!Number.isFinite(price) || price < 0) {
         throw new BadRequestException(
-          selectedVariant
-            ? `Selected variant for "${product.name}" has no valid price.`
-            : `Product "${product.name}" has no valid price.`,
+          `Product "${product.name}" has no valid price.`,
         );
       }
 
@@ -851,12 +928,11 @@ export class OrdersService {
         variantId: selectedVariant?._id?.toString(),
 
         // The selected color
-        color: cartItem.color,
+        color: selectedColorType,
 
         // Product name
         name: product.name,
-        // Variant newPrice when variant exists,
-        // otherwise product.price
+        // Snapshot unit price.
         price,
 
         // Requested quantity
@@ -867,14 +943,24 @@ export class OrdersService {
       };
     });
 
-    const subtotal = snapshotItems.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0,
-    );
+    const subtotal = Number(cart.total ?? 0);
+
+    if (!Number.isFinite(subtotal) || subtotal < 0) {
+      throw new BadRequestException('Cart total is invalid.');
+    }
+
+    const itemCount = (cart.items ?? []).reduce((total, item: any) => {
+      const quantity = Number(item?.quantity ?? 0);
+      return total + (Number.isFinite(quantity) ? quantity : 0);
+    }, 0);
+
+    const volumeDiscount = calculateVolumeDiscount(itemCount, subtotal);
 
     const taxTotal = payload.taxTotal ?? 0;
     const shippingTotal = validatedDelivery.deliveryFee;
-    const discountTotal = payload.discountTotal ?? 0;
+    const discountTotal = Number(
+      (payload.discountTotal ?? 0) + volumeDiscount.discountAmount,
+    );
 
     const total = subtotal + taxTotal + shippingTotal - discountTotal;
 
@@ -895,6 +981,7 @@ export class OrdersService {
       taxTotal,
       shippingTotal,
       discountTotal,
+      volumeDiscount,
 
       total,
 
@@ -959,6 +1046,7 @@ export class OrdersService {
     const orderNumber = this.generateOrderNumber();
 
     const orderItems = transaction.items.map((item) => ({
+      offerId: item.offerId,
       productId: item.productId,
       color: item.color,
       variantId: item.variantId,
