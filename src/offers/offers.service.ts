@@ -262,13 +262,26 @@ export class OffersService {
   }
 
   async findById(offerId: string): Promise<Offer> {
-    const offer = await this.offerModel
-      .findById(offerId)
-      .populate('variantIds')
-      .exec();
+    const offer = await this.offerModel.findById(offerId).lean().exec();
+
     if (!offer) {
       throw new NotFoundException('Offer not found.');
     }
-    return offer;
+
+    const variantIds = (offer.variantIds ?? []).map(
+      (id: Types.ObjectId | string) => id.toString(),
+    );
+
+    const products = await this.productModel
+      .find({
+        'color.variants._id': {
+          $in: variantIds.map((id) => new Types.ObjectId(id)),
+        },
+      })
+      .select('name slug color images')
+      .lean()
+      .exec();
+
+    return enrichOfferWithVariants(offer, products) as Offer;
   }
 }
