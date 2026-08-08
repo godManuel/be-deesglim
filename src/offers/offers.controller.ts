@@ -35,14 +35,10 @@ export class OffersController {
   @UseInterceptors(FileInterceptor('image'))
   @ApiConsumes('multipart/form-data')
   create(
-    @UploadedFile() image: UploadedOfferImageFile,
     @Body() dto: CreateOfferDto,
+    @UploadedFile() image?: UploadedOfferImageFile,
   ) {
-    if (image && !dto.image) {
-      dto.image = image.originalname;
-    }
-
-    return this.offersService.create(dto);
+    return this.offersService.create(dto, image);
   }
 
   @Get()

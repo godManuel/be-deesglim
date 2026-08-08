@@ -3,7 +3,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
+import { createHash } from 'crypto';
 import { FilterQuery, Model, Types } from 'mongoose';
 import { Offer, OfferDocument } from './schemas/offer.schema';
 import { CreateOfferDto } from './dto/create-offer.dto';
@@ -14,6 +16,12 @@ import {
   enrichOffersWithVariants,
 } from './utils/offer-variant-population';
 
+type UploadedOfferImageFile = {
+  buffer: Buffer;
+  mimetype: string;
+  originalname: string;
+};
+
 @Injectable()
 export class OffersService {
   constructor(
@@ -21,9 +29,13 @@ export class OffersService {
     private readonly offerModel: Model<OfferDocument>,
     @InjectModel(Product.name)
     private readonly productModel: Model<ProductDocument>,
+    private readonly configService: ConfigService,
   ) {}
 
-  async create(dto: CreateOfferDto): Promise<Offer> {
+  async create(
+    dto: CreateOfferDto,
+    imageFile?: UploadedOfferImageFile,
+  ): Promise<Offer> {
     const uniqueVariantIds = Array.from(new Set(dto.variantIds));
 
     // Find products containing the requested nested variant IDs
@@ -63,6 +75,14 @@ export class OffersService {
       throw new BadRequestException(
         `The following variant id(s) do not exist: ${missingVariantIds.join(', ')}`,
       );
+    }
+
+    if (imageFile) {
+      dto.image = await this.uploadImageToCloudinary(imageFile);
+    }
+
+    if (!dto.image) {
+      throw new BadRequestException('Offer image is required.');
     }
 
     // Validate expiration date
@@ -106,6 +126,54 @@ export class OffersService {
       .exec();
 
     return enrichOfferWithVariants(savedOfferObject, populatedProducts);
+  }
+
+  private async uploadImageToCloudinary(
+    file: UploadedOfferImageFile,
+  ): Promise<string> {
+    const cloudName = this.configService.getOrThrow<string>(
+      'CLOUDINARY_CLOUD_NAME',
+    );
+    const apiKey = this.configService.getOrThrow<string>('CLOUDINARY_API_KEY');
+    const apiSecret = this.configService.getOrThrow<string>(
+      'CLOUDINARY_API_SECRET',
+    );
+    const folder =
+      this.configService.get<string>('CLOUDINARY_FOLDER') ?? 'Deesglim';
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const signature = createHash('sha1')
+      .update(`folder=${folder}&timestamp=${timestamp}${apiSecret}`)
+      .digest('hex');
+
+    const formData = new FormData();
+    formData.append(
+      'file',
+      `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
+    );
+    formData.append('api_key', apiKey);
+    formData.append('timestamp', timestamp);
+    formData.append('folder', folder);
+    formData.append('signature', signature);
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      {
+        method: 'POST',
+        body: formData,
+      },
+    );
+
+    if (!response.ok) {
+      throw new BadRequestException(
+        `Cloudinary upload failed: ${await response.text()}`,
+      );
+    }
+
+    const result = (await response.json()) as {
+      secure_url: string;
+    };
+
+    return result.secure_url;
   }
 
   async findAll(query: ListOffersQueryDto) {
