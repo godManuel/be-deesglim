@@ -1087,9 +1087,14 @@ export class OrdersService {
     ).join('');
   }
 
-  private async validateDeliveryDetails(deliveryDetails: DeliveryDetailsDto) {
+  private async validateDeliveryDetails(deliveryDetails?: DeliveryDetailsDto) {
     if (!deliveryDetails) {
-      throw new BadRequestException('Delivery details are required.');
+      return {
+        deliveryPartner: null,
+        deliveryPartnerName: 'No delivery selected',
+        deliveryType: null,
+        deliveryFee: 0,
+      };
     }
 
     const { deliveryPartner, deliveryType } = deliveryDetails;

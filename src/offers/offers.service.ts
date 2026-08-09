@@ -9,6 +9,10 @@ import { Offer, OfferDocument } from './schemas/offer.schema';
 import { CreateOfferDto } from './dto/create-offer.dto';
 import { ListOffersQueryDto } from './dto/list-offers-query.dto';
 import { Product, ProductDocument } from 'src/products/schemas/product.schema';
+import {
+  enrichOfferWithVariants,
+  enrichOffersWithVariants,
+} from './utils/offer-variant-population';
 
 @Injectable()
 export class OffersService {
@@ -86,7 +90,22 @@ export class OffersService {
       variantIds: uniqueVariantIds.map((id) => new Types.ObjectId(id)),
     });
 
-    return offer.save();
+    const savedOffer = await offer.save();
+    const savedOfferObject = savedOffer?.toObject
+      ? savedOffer.toObject()
+      : savedOffer;
+
+    const populatedProducts = await this.productModel
+      .find({
+        'color.variants._id': {
+          $in: uniqueVariantIds.map((id) => new Types.ObjectId(id)),
+        },
+      })
+      .select('name slug color images')
+      .lean()
+      .exec();
+
+    return enrichOfferWithVariants(savedOfferObject, populatedProducts);
   }
 
   async findAll(query: ListOffersQueryDto) {
@@ -96,6 +115,7 @@ export class OffersService {
 
     const filter: FilterQuery<OfferDocument> = {};
 
+    // By default, return active offers.
     // By default, return active offers.
     // An offer is considered active if:
     // 1. It has no expirationDate, OR
@@ -157,57 +177,10 @@ export class OffersService {
     }
 
     // ---------------------------------------------------------
-    // Create a lookup map for nested variants
-    // ---------------------------------------------------------
-
-    const variantMap = new Map<string, any>();
-
-    for (const product of products) {
-      for (const color of product.color ?? []) {
-        for (const variant of color.variants ?? []) {
-          const variantId = (variant as any)._id?.toString();
-
-          if (!variantId) {
-            continue;
-          }
-
-          variantMap.set(variantId, {
-            variant,
-            product,
-            color,
-          });
-        }
-      }
-    }
-
-    // ---------------------------------------------------------
     // Attach nested variant details to each offer
     // ---------------------------------------------------------
 
-    const data = offers.map((offer) => {
-      const variants = (offer.variantIds ?? [])
-        .map((variantId) => {
-          const variantData = variantMap.get(variantId.toString());
-
-          if (!variantData) {
-            return null;
-          }
-
-          return {
-            variantId: variantId.toString(),
-            productId: variantData.product._id?.toString(),
-            productName: variantData.product.name,
-            color: variantData.color.colorType,
-            variant: variantData.variant,
-          };
-        })
-        .filter(Boolean);
-
-      return {
-        ...offer,
-        variantIds: variants,
-      };
-    });
+    const data = enrichOffersWithVariants(offers, products);
 
     return {
       data,

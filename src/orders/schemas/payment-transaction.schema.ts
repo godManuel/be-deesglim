@@ -106,29 +106,30 @@ export class PaymentTransaction {
     type: {
       deliveryPartner: {
         type: String,
-        required: true,
+        required: false,
       },
       deliveryPartnerName: {
         type: String,
-        required: true,
+        required: false,
       },
       deliveryType: {
         type: String,
-        required: true,
+        required: false,
       },
       deliveryFee: {
         type: Number,
-        required: true,
+        required: false,
       },
     },
-    required: true,
+    required: false,
+    default: null,
   })
-  deliveryDetails!: {
-    deliveryPartner: string;
-    deliveryPartnerName: string;
-    deliveryType: string;
+  deliveryDetails?: {
+    deliveryPartner: string | null;
+    deliveryPartnerName: string | null;
+    deliveryType: string | null;
     deliveryFee: number;
-  };
+  } | null;
 
   @Prop()
   paystackAccessCode?: string;

@@ -6,7 +6,11 @@ import {
   Post,
   Query,
   UseGuards,
+  UploadedFile,
 } from '@nestjs/common';
+import { UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiConsumes } from '@nestjs/swagger';
 import { OffersService } from './offers.service';
 import { CreateOfferDto } from './dto/create-offer.dto';
 import { ListOffersQueryDto } from './dto/list-offers-query.dto';
@@ -15,6 +19,12 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../users/schemas/user.schema';
 
+type UploadedOfferImageFile = {
+  buffer: Buffer;
+  mimetype: string;
+  originalname: string;
+};
+
 @Controller('offers')
 export class OffersController {
   constructor(private readonly offersService: OffersService) {}
@@ -22,7 +32,16 @@ export class OffersController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  create(@Body() dto: CreateOfferDto) {
+  @UseInterceptors(FileInterceptor('image'))
+  @ApiConsumes('multipart/form-data')
+  create(
+    @UploadedFile() image: UploadedOfferImageFile,
+    @Body() dto: CreateOfferDto,
+  ) {
+    if (image && !dto.image) {
+      dto.image = image.originalname;
+    }
+
     return this.offersService.create(dto);
   }
 

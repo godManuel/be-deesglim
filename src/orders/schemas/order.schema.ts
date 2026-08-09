@@ -89,14 +89,15 @@ export class Order {
       deliveryType: String,
       deliveryFee: Number,
     },
-    required: true,
+    required: false,
+    default: null,
   })
-  deliveryDetails!: {
-    deliveryPartner: string;
-    deliveryPartnerName: string;
-    deliveryType: string;
+  deliveryDetails?: {
+    deliveryPartner: string | null;
+    deliveryPartnerName: string | null;
+    deliveryType: string | null;
     deliveryFee: number;
-  };
+  } | null;
 
   @Prop()
   extraNote?: string;

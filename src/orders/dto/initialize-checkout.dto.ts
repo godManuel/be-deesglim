@@ -15,9 +15,10 @@ export class InitializeCheckoutDto {
   @Type(() => CreateShippingAddressDto)
   shippingAddress!: CreateShippingAddressDto;
 
+  @IsOptional()
   @ValidateNested()
   @Type(() => DeliveryDetailsDto)
-  deliveryDetails!: DeliveryDetailsDto;
+  deliveryDetails?: DeliveryDetailsDto;
 
   @IsOptional()
   @IsString()
